@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from './supabase';
 import './App1.css';
@@ -170,107 +170,107 @@ function App() {
     }, {});
   }, [activeTags, tagSearch]);
 
-  const passesRequiredFilters = (program) => {
-    const userAge = age === '' ? null : Number(age);
+  const passesRequiredFilters = useCallback((program) => {
+  const userAge = age === '' ? null : Number(age);
 
-    if (userAge !== null) {
-      if (
-        program.min_age !== null &&
-        program.min_age !== undefined &&
-        userAge < program.min_age
-      ) {
-        return false;
-      }
-      if (
-        program.max_age !== null &&
-        program.max_age !== undefined &&
-        userAge > program.max_age
-      ) {
-        return false;
-      }
-    }
-
+  if (userAge !== null) {
     if (
-      gender &&
-      program.gender &&
-      program.gender !== '무관' &&
-      program.gender !== gender
+      program.min_age !== null &&
+      program.min_age !== undefined &&
+      userAge < program.min_age
     ) {
       return false;
     }
-
     if (
-      schoolLevel &&
-      program.school_level &&
-      program.school_level !== '무관' &&
-      program.school_level !== schoolLevel
+      program.max_age !== null &&
+      program.max_age !== undefined &&
+      userAge > program.max_age
     ) {
       return false;
     }
+  }
 
-    return true;
-  };
+  if (
+    gender &&
+    program.gender &&
+    program.gender !== '무관' &&
+    program.gender !== gender
+  ) {
+    return false;
+  }
 
-  const calculateRecommendationScore = (program) => {
-    const programTags = program.tags || [];
+  if (
+    schoolLevel &&
+    program.school_level &&
+    program.school_level !== '무관' &&
+    program.school_level !== schoolLevel
+  ) {
+    return false;
+  }
 
-    if (selectedTags.length === 0) {
-      return {
-        ...program,
-        matchCount: 0,
-        matchRatio: 0,
-        score: 0,
-        matchedTags: [],
-      };
-    }
+  return true;
+}, [age, gender, schoolLevel]);
 
-    let score = 0;
-    const matchedTags = [];
+  const calculateRecommendationScore = useCallback((program) => {
+  const programTags = program.tags || [];
 
-    for (const tag of selectedTags) {
-      if (programTags.includes(tag)) {
-        const weight = TAG_WEIGHTS[tag] || 20;
-        score += weight;
-        matchedTags.push(tag);
-      }
-    }
-
-    const matchCount = matchedTags.length;
-    const matchRatio =
-      selectedTags.length > 0 ? matchCount / selectedTags.length : 0;
-
-    score += matchCount * 10;
-
+  if (selectedTags.length === 0) {
     return {
       ...program,
-      matchCount,
-      matchRatio,
-      score,
-      matchedTags,
+      matchCount: 0,
+      matchRatio: 0,
+      score: 0,
+      matchedTags: [],
     };
+  }
+
+  let score = 0;
+  const matchedTags = [];
+
+  for (const tag of selectedTags) {
+    if (programTags.includes(tag)) {
+      const weight = TAG_WEIGHTS[tag] || 20;
+      score += weight;
+      matchedTags.push(tag);
+    }
+  }
+
+  const matchCount = matchedTags.length;
+  const matchRatio =
+    selectedTags.length > 0 ? matchCount / selectedTags.length : 0;
+
+  score += matchCount * 10;
+
+  return {
+    ...program,
+    matchCount,
+    matchRatio,
+    score,
+    matchedTags,
   };
+}, [selectedTags]);
 
   const recommendedPrograms = useMemo(() => {
-    return programs
-      .filter((program) => passesRequiredFilters(program))
-      .map((program) => calculateRecommendationScore(program))
-      .filter((program) => program.score > 0)
-      .sort((a, b) => {
-        const aCritical = a.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
-        const bCritical = b.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
+  return programs
+    .filter((program) => passesRequiredFilters(program))
+    .map((program) => calculateRecommendationScore(program))
+    .filter((program) => program.score > 0)
+    .sort((a, b) => {
+      const aCritical = a.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
+      const bCritical = b.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
 
-        if (aCritical && !bCritical) return -1;
-        if (!aCritical && bCritical) return 1;
-        if (b.score !== a.score) return b.score - a.score;
-        return a.name.localeCompare(b.name);
-      });
-  }, [programs, selectedTags, age, gender, schoolLevel]);
+      if (aCritical && !bCritical) return -1;
+      if (!aCritical && bCritical) return 1;
+      if (b.score !== a.score) return b.score - a.score;
+      return a.name.localeCompare(b.name);
+    });
+}, [programs, passesRequiredFilters, calculateRecommendationScore]);
 
   const allPrograms = useMemo(() => {
-    return programs
-      .filter((program) => passesRequiredFilters(program))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [programs, age, gender, schoolLevel]);
+  return programs
+    .filter((program) => passesRequiredFilters(program))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}, [programs, passesRequiredFilters]);
 
   const organizationPrograms = useMemo(() => {
     if (!selectedOrganizationId) return [];
