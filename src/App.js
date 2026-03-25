@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from './supabase';
 import './App1.css';
@@ -19,6 +25,8 @@ const TAG_WEIGHTS = {
   결식: 50,
   장기결석: 50,
 };
+
+
 
 function App() {
   const [programs, setPrograms] = useState([]);
@@ -42,6 +50,12 @@ function App() {
   const [editingId, setEditingId] = useState(null);
   const [orgEditingId, setOrgEditingId] = useState(null);
   const [tagEditingId, setTagEditingId] = useState(null);
+
+  const formRef = useRef(null);
+const orgFormRef = useRef(null);
+
+const [selectedProgramIds, setSelectedProgramIds] = useState([]);
+const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
 
   const [form, setForm] = useState({
     name: '',
@@ -337,6 +351,8 @@ function App() {
     setOrgUploadPreview([]);
     setProgramUploadPreview([]);
     setOpenProgramId(null);
+    setSelectedProgramIds([]);
+    setSelectedOrganizationIds([]);
 
     setForm({
       name: '',
@@ -469,27 +485,59 @@ function App() {
     fetchPrograms();
   };
 
-  const handleEditProgram = (program) => {
-    setEditingId(program.id);
-    setForm({
-      name: program.name || '',
-      organization: program.organization || '',
-      organization_id: program.organization_id || '',
-      phone: program.phone || '',
-      description: program.description || '',
-      tags: program.tags || [],
-      min_age:
-        program.min_age === null || program.min_age === undefined
-          ? ''
-          : String(program.min_age),
-      max_age:
-        program.max_age === null || program.max_age === undefined
-          ? ''
-          : String(program.max_age),
-      gender: program.gender || '무관',
-      school_level: program.school_level || '무관',
-    });
+  const handleDeleteSelectedPrograms = async () => {
+    if (selectedProgramIds.length === 0) {
+      alert('선택된 사업이 없습니다.');
+      return;
+    }
+
+    const ok = window.confirm(
+      `선택한 사업 ${selectedProgramIds.length}개를 삭제할까요?`
+    );
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from('programs')
+      .delete()
+      .in('id', selectedProgramIds);
+
+    if (error) {
+      alert('선택 삭제 실패');
+      console.error(error);
+      return;
+    }
+
+    alert(`사업 ${selectedProgramIds.length}개 삭제 완료`);
+    setSelectedProgramIds([]);
+    setOpenProgramId(null);
+    fetchPrograms();
   };
+
+  const handleEditProgram = (program) => {
+  setEditingId(program.id);
+  setForm({
+    name: program.name || '',
+    organization: program.organization || '',
+    organization_id: program.organization_id || '',
+    phone: program.phone || '',
+    description: program.description || '',
+    tags: program.tags || [],
+    min_age:
+      program.min_age === null || program.min_age === undefined
+        ? ''
+        : String(program.min_age),
+    max_age:
+      program.max_age === null || program.max_age === undefined
+        ? ''
+        : String(program.max_age),
+    gender: program.gender || '무관',
+    school_level: program.school_level || '무관',
+  });
+
+  setTimeout(() => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+};
 
   const handleSaveOrganization = async () => {
     if (!orgForm.name) {
@@ -550,14 +598,18 @@ function App() {
   };
 
   const handleEditOrganization = (org) => {
-    setOrgEditingId(org.id);
-    setOrgForm({
-      name: org.name || '',
-      phone: org.phone || '',
-      address: org.address || '',
-      contact_person: org.contact_person || '',
-    });
-  };
+  setOrgEditingId(org.id);
+  setOrgForm({
+    name: org.name || '',
+    phone: org.phone || '',
+    address: org.address || '',
+    contact_person: org.contact_person || '',
+  });
+
+  setTimeout(() => {
+    orgFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+};
 
   const handleDeleteOrganization = async (id) => {
     const org = organizations.find((item) => item.id === id);
@@ -597,6 +649,70 @@ function App() {
     }
 
     alert('기관 삭제 완료');
+    fetchOrganizations();
+  };
+
+  const handleDeleteSelectedOrganizations = async () => {
+    if (selectedOrganizationIds.length === 0) {
+      alert('선택된 기관이 없습니다.');
+      return;
+    }
+
+    const ok = window.confirm(
+      `선택한 기관 ${selectedOrganizationIds.length}개를 삭제할까요?\n연결된 사업이 있는 기관은 제외됩니다.`
+    );
+    if (!ok) return;
+
+    const deletableIds = [];
+    const blockedNames = [];
+
+    for (const orgId of selectedOrganizationIds) {
+      const org = organizations.find((item) => item.id === orgId);
+
+      const { data: linkedPrograms, error: checkError } = await supabase
+        .from('programs')
+        .select('id')
+        .eq('organization_id', orgId);
+
+      if (checkError) {
+        console.error(checkError);
+        blockedNames.push(`${org?.name || '알 수 없는 기관'}(확인 실패)`);
+        continue;
+      }
+
+      if (linkedPrograms && linkedPrograms.length > 0) {
+        blockedNames.push(org?.name || '알 수 없는 기관');
+      } else {
+        deletableIds.push(orgId);
+      }
+    }
+
+    if (deletableIds.length > 0) {
+      const { error } = await supabase
+        .from('organizations')
+        .delete()
+        .in('id', deletableIds);
+
+      if (error) {
+        alert('기관 선택 삭제 실패');
+        console.error(error);
+        return;
+      }
+    }
+
+    let message = '';
+    if (deletableIds.length > 0) {
+      message += `기관 ${deletableIds.length}개 삭제 완료`;
+    }
+    if (blockedNames.length > 0) {
+      message += `\n삭제 제외(연결된 사업 있음): ${blockedNames.join(', ')}`;
+    }
+    if (!message) {
+      message = '삭제된 기관이 없습니다.';
+    }
+
+    alert(message);
+    setSelectedOrganizationIds([]);
     fetchOrganizations();
   };
 
@@ -926,118 +1042,142 @@ function App() {
     fetchPrograms();
   };
 
-  const renderProgramCard = (p, index = null, showScore = false) => {
-    const isOpen = openProgramId === p.id;
-    const org = getOrganizationById(p.organization_id);
-    const isCritical = p.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
-    const isTop = index !== null && index < 3;
+ const renderProgramCard = (p, index = null, showScore = false) => {
+  const isOpen = openProgramId === p.id;
+  const org = getOrganizationById(p.organization_id);
+  const isCritical = p.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
+  const isTop = index !== null && index < 3;
 
-    return (
-      <div
-        key={p.id}
-        className={`program-card ${isCritical ? 'critical' : isTop ? 'top' : ''}`}
-        onClick={() =>
-          setOpenProgramId((prev) => (prev === p.id ? null : p.id))
-        }
-      >
-        <div className="program-card-head">
-          <div>
-            {isCritical && (
-              <div className="program-badge critical">🚨 긴급 지원 필요</div>
-            )}
-            {isTop && (
-              <div className="program-badge top">⭐ 추천 TOP {index + 1}</div>
-            )}
-            <h3 className="program-title">{p.name}</h3>
-            <p className="program-sub">
-              {getOrganizationName(p.organization_id, p.organization)}
-            </p>
-          </div>
-
-          <div className="program-head-right">
-            {showScore && <div className="score-chip">{p.score}점</div>}
-            <div className="detail-toggle">
-              {isOpen ? '상세 닫기 ▲' : '상세 보기 ▼'}
-            </div>
-          </div>
+  return (
+    <div
+      key={p.id}
+      className={`program-card ${isCritical ? 'critical' : isTop ? 'top' : ''}`}
+      onClick={() =>
+        setOpenProgramId((prev) => (prev === p.id ? null : p.id))
+      }
+    >
+      {isAdmin && (
+        <div
+          style={{ marginBottom: 10 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={selectedProgramIds.includes(p.id)}
+              onChange={() => {
+                setSelectedProgramIds((prev) =>
+                  prev.includes(p.id)
+                    ? prev.filter((id) => id !== p.id)
+                    : [...prev, p.id]
+                );
+              }}
+            />
+            <span>선택</span>
+          </label>
         </div>
+      )}
 
-        <div className="program-summary">
-          <p>{p.description || '설명 없음'}</p>
-          {showScore && p.matchedTags && p.matchedTags.length > 0 && (
-            <p className="program-match">
-              일치 태그: {p.matchedTags.join(', ')}
-            </p>
+      <div className="program-card-head">
+        <div>
+          {isCritical && (
+            <div className="program-badge critical">🚨 긴급 지원 필요</div>
           )}
+          {isTop && (
+            <div className="program-badge top">⭐ 추천 TOP {index + 1}</div>
+          )}
+          <h3 className="program-title">{p.name}</h3>
+          <p className="program-sub">
+            {getOrganizationName(p.organization_id, p.organization)}
+          </p>
         </div>
 
-        {isOpen && (
-          <div
-            className="program-detail"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="detail-grid">
-              <div className="detail-block">
-                <h4>사업 정보</h4>
-                <p><strong>설명</strong><br />{p.description || '설명 없음'}</p>
-                <p>
-                  <strong>대상 연령</strong><br />
-                  {p.min_age ?? '무관'} ~ {p.max_age ?? '무관'}
-                </p>
-                <p><strong>대상 성별</strong><br />{p.gender || '무관'}</p>
-                <p><strong>학령</strong><br />{p.school_level || '무관'}</p>
-                <p>
-                  <strong>전체 태그</strong><br />
-                  {p.tags ? p.tags.join(', ') : '없음'}
-                </p>
-              </div>
-
-              <div className="detail-block">
-                <h4>연계 기관</h4>
-                <p><strong>기관명</strong><br />{org?.name || p.organization || '기관 없음'}</p>
-                <p><strong>대표전화</strong><br />{org?.phone || p.phone || '연락처 없음'}</p>
-                <p><strong>주소</strong><br />{org?.address || '주소 없음'}</p>
-                <p><strong>담당자</strong><br />{org?.contact_person || '담당자 없음'}</p>
-              </div>
-            </div>
-
-            <div className="detail-actions">
-              {(org?.phone || p.phone) && (
-                <a href={`tel:${org?.phone || p.phone}`}>
-                  <button className="btn btn-primary">전화하기</button>
-                </a>
-              )}
-
-              {isAdmin && (
-                <>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => handleEditProgram(p)}
-                  >
-                    수정
-                  </button>
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => handleDeleteProgram(p.id)}
-                  >
-                    삭제
-                  </button>
-                </>
-              )}
-            </div>
+        <div className="program-head-right">
+          {showScore && <div className="score-chip">{p.score}점</div>}
+          <div className="detail-toggle">
+            {isOpen ? '상세 닫기 ▲' : '상세 보기 ▼'}
           </div>
+        </div>
+      </div>
+
+      <div className="program-summary">
+        <p>{p.description || '설명 없음'}</p>
+        {showScore && p.matchedTags && p.matchedTags.length > 0 && (
+          <p className="program-match">
+            일치 태그: {p.matchedTags.join(', ')}
+          </p>
         )}
       </div>
-    );
-  };
+
+      {isOpen && (
+        <div
+          className="program-detail"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="detail-grid">
+            <div className="detail-block">
+              <h4>사업 정보</h4>
+              <p><strong>설명</strong><br />{p.description || '설명 없음'}</p>
+              <p>
+                <strong>대상 연령</strong><br />
+                {p.min_age ?? '무관'} ~ {p.max_age ?? '무관'}
+              </p>
+              <p><strong>대상 성별</strong><br />{p.gender || '무관'}</p>
+              <p><strong>학령</strong><br />{p.school_level || '무관'}</p>
+              <p>
+                <strong>전체 태그</strong><br />
+                {p.tags ? p.tags.join(', ') : '없음'}
+              </p>
+            </div>
+
+            <div className="detail-block">
+              <h4>연계 기관</h4>
+              <p><strong>기관명</strong><br />{org?.name || p.organization || '기관 없음'}</p>
+              <p><strong>대표전화</strong><br />{org?.phone || p.phone || '연락처 없음'}</p>
+              <p><strong>주소</strong><br />{org?.address || '주소 없음'}</p>
+              <p><strong>담당자</strong><br />{org?.contact_person || '담당자 없음'}</p>
+            </div>
+          </div>
+
+          <div className="detail-actions">
+            {(org?.phone || p.phone) && (
+              <a href={`tel:${org?.phone || p.phone}`}>
+                <button className="btn btn-primary">전화하기</button>
+              </a>
+            )}
+
+            {isAdmin && (
+              <>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => handleEditProgram(p)}
+                >
+                  수정
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => handleDeleteProgram(p.id)}
+                >
+                  삭제
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">복</div>
+          <div className="brand-mark">
+  <img src="/logo.png" alt="logo" />
+</div>
           <div>
-            <div className="brand-title">복지 연계 시스템</div>
+            <div className="brand-title">금산교육지원청</div>
             <div className="brand-sub">학생맞춤통합지원</div>
           </div>
         </div>
@@ -1118,6 +1258,35 @@ function App() {
         {recommendedPrograms.length}개 결과
       </div>
     </section>
+
+    {isAdmin && recommendedPrograms.length > 0 && (
+  <section className="panel" style={{ marginBottom: 16 }}>
+    <div className="action-row">
+      <button
+        className="btn btn-secondary"
+        onClick={() =>
+          setSelectedProgramIds(recommendedPrograms.map((p) => p.id))
+        }
+      >
+        추천 목록 전체 선택
+      </button>
+
+      <button
+        className="btn btn-secondary"
+        onClick={() => setSelectedProgramIds([])}
+      >
+        선택 해제
+      </button>
+
+      <button
+        className="btn btn-danger"
+        onClick={handleDeleteSelectedPrograms}
+      >
+        선택 삭제 ({selectedProgramIds.length})
+      </button>
+    </div>
+  </section>
+)}
 
     {recommendedPrograms.length === 0 ? (
       <div className="empty-state">
@@ -1284,6 +1453,35 @@ function App() {
               <div className="result-count">{allPrograms.length}개 결과</div>
             </section>
 
+{isAdmin && allPrograms.length > 0 && (
+  <section className="panel" style={{ marginBottom: 16 }}>
+    <div className="action-row">
+      <button
+        className="btn btn-secondary"
+        onClick={() =>
+          setSelectedProgramIds(allPrograms.map((p) => p.id))
+        }
+      >
+        전체 사업 선택
+      </button>
+
+      <button
+        className="btn btn-secondary"
+        onClick={() => setSelectedProgramIds([])}
+      >
+        선택 해제
+      </button>
+
+      <button
+        className="btn btn-danger"
+        onClick={handleDeleteSelectedPrograms}
+      >
+        선택 삭제 ({selectedProgramIds.length})
+      </button>
+    </div>
+  </section>
+)}
+
             {allPrograms.length === 0 ? (
               <div className="empty-state">
                 <h3>조건에 맞는 사업이 없습니다</h3>
@@ -1367,10 +1565,16 @@ function App() {
             </div>
 
             <div className="admin-grid">
-              <div className="panel">
-                <div className="panel-header compact">
-                  <h3>{editingId ? '사업 수정' : '사업 추가'}</h3>
-                </div>
+
+              <div className="panel" ref={formRef}>
+  <div className="panel-header compact">
+    <h3>{editingId ? '사업 수정 중' : '사업 추가'}</h3>
+    {editingId && (
+      <p style={{ color: '#1d4ed8', fontWeight: 700 }}>
+        현재 선택한 사업을 수정 중입니다.
+      </p>
+    )}
+  </div>
 
                 <div className="form-grid">
                   <input
@@ -1504,10 +1708,15 @@ function App() {
                 </div>
               </div>
 
-              <div className="panel">
-                <div className="panel-header compact">
-                  <h3>{orgEditingId ? '기관 수정' : '기관 추가'}</h3>
-                </div>
+              <div className="panel" ref={orgFormRef}>
+  <div className="panel-header compact">
+    <h3>{orgEditingId ? '기관 수정 중' : '기관 추가'}</h3>
+    {orgEditingId && (
+      <p style={{ color: '#1d4ed8', fontWeight: 700 }}>
+        현재 선택한 기관을 수정 중입니다.
+      </p>
+    )}
+  </div>
 
                 <div className="form-grid">
                   <input
@@ -1685,37 +1894,80 @@ function App() {
               </div>
 
               <div className="panel">
-                <div className="panel-header compact">
-                  <h3>기관 목록</h3>
-                </div>
+  <div className="panel-header compact">
+    <h3>기관 목록</h3>
+  </div>
 
-                <div className="simple-list">
-                  {organizations.map((org) => (
-                    <div key={org.id} className="simple-item">
-                      <div>
-                        <strong>{org.name}</strong>
-                        <p>{org.phone || '연락처 없음'}</p>
-                        <p>{org.address || '주소 없음'}</p>
-                        <p>담당자: {org.contact_person || '담당자 없음'}</p>
-                      </div>
-                      <div className="action-row">
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => handleEditOrganization(org)}
-                        >
-                          수정
-                        </button>
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDeleteOrganization(org.id)}
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+  <div className="action-row" style={{ marginBottom: 12 }}>
+    <button
+      className="btn btn-secondary"
+      onClick={() =>
+        setSelectedOrganizationIds(organizations.map((org) => org.id))
+      }
+    >
+      기관 전체 선택
+    </button>
+
+    <button
+      className="btn btn-secondary"
+      onClick={() => setSelectedOrganizationIds([])}
+    >
+      선택 해제
+    </button>
+
+    <button
+      className="btn btn-danger"
+      onClick={handleDeleteSelectedOrganizations}
+    >
+      선택 삭제 ({selectedOrganizationIds.length})
+    </button>
+  </div>
+
+  <div className="simple-list">
+    {organizations.map((org) => (
+      <div key={org.id} className="simple-item">
+        <div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={selectedOrganizationIds.includes(org.id)}
+                onChange={() => {
+                  setSelectedOrganizationIds((prev) =>
+                    prev.includes(org.id)
+                      ? prev.filter((id) => id !== org.id)
+                      : [...prev, org.id]
+                  );
+                }}
+              />
+              <span>선택</span>
+            </label>
+          </div>
+
+          <strong>{org.name}</strong>
+          <p>{org.phone || '연락처 없음'}</p>
+          <p>{org.address || '주소 없음'}</p>
+          <p>담당자: {org.contact_person || '담당자 없음'}</p>
+        </div>
+
+        <div className="action-row">
+          <button
+            className="btn btn-secondary"
+            onClick={() => handleEditOrganization(org)}
+          >
+            수정
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => handleDeleteOrganization(org.id)}
+          >
+            삭제
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
 
               <div className="panel">
                 <div className="panel-header compact">
