@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from './supabase';
 import './App1.css';
-
+// deploy test
 const CRITICAL_TAGS = ['자해위험', '학대', '학교폭력'];
 
 const TAG_WEIGHTS = {
