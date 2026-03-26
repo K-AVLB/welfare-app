@@ -666,3 +666,9 @@ a {
 .admin-panel-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
+
+.recommend-scroll {
+  max-height: 700px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
