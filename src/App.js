@@ -9,21 +9,63 @@ import * as XLSX from 'xlsx';
 import { supabase } from './supabase';
 import './App1.css';
 // deploy test
-const CRITICAL_TAGS = ['자해위험', '학대', '학교폭력'];
+const CRITICAL_TAGS = [
+  '자살위험',
+  '자해위험',
+  '학대방임',
+  '성폭력',
+  '학교폭력',
+  '결식',
+];
 
 const TAG_WEIGHTS = {
-  자해위험: 100,
-  학대: 100,
-  학교폭력: 90,
-  우울: 60,
-  불안: 60,
-  무기력: 50,
-  ADHD: 40,
-  문제행동: 40,
-  학습부진: 30,
-  기초학력: 30,
-  결식: 50,
-  장기결석: 50,
+  자살위험: 110,
+  자해위험: 105,
+  학대방임: 100,
+  성폭력: 100,
+  학교폭력: 95,
+
+  결식: 85,
+  가정급변: 85,
+  양육환경위기: 80,
+  가족돌봄청소년: 80,
+
+  기초생활수급자: 75,
+  법정차상위: 70,
+  경제적어려움: 70,
+  학업중단위기: 70,
+  우울: 70,
+  학교밖청소년: 70,
+  소년소녀가장: 70,
+
+  불안: 65,
+  분노폭력: 65,
+  기타저소득: 65,
+
+  법정한부모: 60,
+  부모부재: 60,
+  시설보호: 60,
+  특수교육대상자: 60,
+  북한이탈주민: 60,
+  난민: 60,
+  장애: 60,
+  무기력: 60,
+
+  한부모: 55,
+  질병: 55,
+
+  조부모가정: 50,
+  다문화: 50,
+  ADHD: 50,
+
+  친척돌봄: 45,
+
+  기초학습부족: 40,
+
+  교과부족: 35,
+  비만: 30,
+
+  기타: 20,
 };
 
 
@@ -57,6 +99,10 @@ const orgFormRef = useRef(null);
 const [selectedProgramIds, setSelectedProgramIds] = useState([]);
 const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
 
+const [orgSearch, setOrgSearch] = useState('');
+
+const [adminTagSearch, setAdminTagSearch] = useState('');
+
   const [form, setForm] = useState({
     name: '',
     organization: '',
@@ -88,7 +134,7 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
 
   const resultRef = useRef(null);
 
-  const ADMIN_EMAIL = 'mdj970930@gmail.com';
+  const ADMIN_EMAIL = 'gsadmin@ai.cne.go.kr';
   const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
@@ -144,6 +190,9 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
     setTags(data || []);
   };
 
+
+
+  
   const getOrganizationName = (organizationId, fallbackName) => {
     const org = organizations.find((item) => item.id === organizationId);
     return org?.name || fallbackName || '기관 없음';
@@ -152,6 +201,19 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
   const getOrganizationById = (organizationId) => {
     return organizations.find((item) => item.id === organizationId) || null;
   };
+
+const filteredAdminTags = useMemo(() => {
+  const keyword = adminTagSearch.trim().toLowerCase();
+
+  if (!keyword) return tags;
+
+  return tags.filter((tag) => {
+    const name = (tag.name || '').toLowerCase();
+    const category = (tag.category || '').toLowerCase();
+
+    return name.includes(keyword) || category.includes(keyword);
+  });
+}, [tags, adminTagSearch]);
 
   const activeTags = useMemo(
     () => tags.filter((tag) => tag.is_active),
@@ -419,52 +481,81 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
   };
 
   const handleSaveProgram = async () => {
-    if (!form.name || !form.organization_id || !form.phone) {
-      alert('사업명, 기관 선택, 전화번호는 필수입니다.');
+  const normalizedOrganizationId =
+    form.organization_id === '' ? null : form.organization_id;
+
+  const normalizedPhone = (form.phone || '').trim();
+  const normalizedName = (form.name || '').trim();
+
+  if (!normalizedName) {
+    alert('사업명은 필수입니다.');
+    return;
+  }
+
+  if (!normalizedOrganizationId) {
+    alert('기관 선택은 필수입니다.');
+    return;
+  }
+
+  if (!normalizedPhone) {
+    alert('전화번호는 필수입니다.');
+    return;
+  }
+
+  const selectedOrg = organizations.find(
+    (org) => String(org.id) === String(normalizedOrganizationId)
+  );
+
+  const payload = {
+    name: normalizedName,
+    organization: selectedOrg ? selectedOrg.name : form.organization || '',
+    organization_id: normalizedOrganizationId,
+    phone: normalizedPhone,
+    description: form.description || '',
+    tags: Array.isArray(form.tags) ? form.tags : [],
+    min_age: form.min_age === '' ? null : Number(form.min_age),
+    max_age: form.max_age === '' ? null : Number(form.max_age),
+    gender: form.gender || '무관',
+    school_level: form.school_level || '무관',
+  };
+
+  console.log('저장 payload:', payload);
+  console.log('editingId:', editingId);
+
+  if (editingId) {
+    const { data, error } = await supabase
+      .from('programs')
+      .update(payload)
+      .eq('id', editingId)
+      .select();
+
+    if (error) {
+      alert(`수정 실패: ${error.message}`);
+      console.error('program update error:', error);
       return;
     }
 
-    const payload = {
-      name: form.name,
-      organization: form.organization,
-      organization_id: form.organization_id,
-      phone: form.phone,
-      description: form.description,
-      tags: form.tags,
-      min_age: form.min_age === '' ? null : Number(form.min_age),
-      max_age: form.max_age === '' ? null : Number(form.max_age),
-      gender: form.gender || '무관',
-      school_level: form.school_level || '무관',
-    };
+    console.log('수정 결과:', data);
+    alert('수정 완료');
+  } else {
+    const { data, error } = await supabase
+      .from('programs')
+      .insert([payload])
+      .select();
 
-    if (editingId) {
-      const { error } = await supabase
-        .from('programs')
-        .update(payload)
-        .eq('id', editingId);
-
-      if (error) {
-        alert('수정 실패');
-        console.error(error);
-        return;
-      }
-
-      alert('수정 완료');
-    } else {
-      const { error } = await supabase.from('programs').insert([payload]);
-
-      if (error) {
-        alert(`추가 실패: ${error.message}`);
-        console.error(error);
-        return;
-      }
-
-      alert('추가 완료');
+    if (error) {
+      alert(`추가 실패: ${error.message}`);
+      console.error('program insert error:', error);
+      return;
     }
 
-    resetForm();
-    fetchPrograms();
-  };
+    console.log('추가 결과:', data);
+    alert('추가 완료');
+  }
+
+  resetForm();
+  fetchPrograms();
+};
 
   const handleDeleteProgram = async (id) => {
     const ok = window.confirm('정말 삭제할까요?');
@@ -513,15 +604,19 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
     fetchPrograms();
   };
 
-  const handleEditProgram = (program) => {
+ const handleEditProgram = (program) => {
+  const selectedOrg = organizations.find(
+    (org) => String(org.id) === String(program.organization_id)
+  );
+
   setEditingId(program.id);
   setForm({
     name: program.name || '',
-    organization: program.organization || '',
+    organization: selectedOrg?.name || program.organization || '',
     organization_id: program.organization_id || '',
     phone: program.phone || '',
     description: program.description || '',
-    tags: program.tags || [],
+    tags: Array.isArray(program.tags) ? program.tags : [],
     min_age:
       program.min_age === null || program.min_age === undefined
         ? ''
@@ -1042,11 +1137,41 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
     fetchPrograms();
   };
 
+const filteredOrganizations = useMemo(() => {
+  const keyword = orgSearch.trim().toLowerCase();
+
+  
+
+  if (!keyword) return organizations;
+
+  return organizations.filter((org) => {
+    const name = (org.name || '').toLowerCase();
+    const address = (org.address || '').toLowerCase();
+    const phone = (org.phone || '').toLowerCase();
+
+
+    
+    return (
+      name.includes(keyword) ||
+      address.includes(keyword) ||
+      phone.includes(keyword)
+    );
+  });
+}, [organizations, orgSearch]);
+
+  
+
+
+
  const renderProgramCard = (p, index = null, showScore = false) => {
   const isOpen = openProgramId === p.id;
   const org = getOrganizationById(p.organization_id);
   const isCritical = p.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
   const isTop = index !== null && index < 3;
+
+
+
+
 
   return (
     <div
@@ -1294,7 +1419,8 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
         <p>아래에서 조건이나 태그를 입력해보세요</p>
       </div>
     ) : (
-      <div className="cards">
+      <div className="cards scroll-box">
+
         {recommendedPrograms.map((p, index) =>
           renderProgramCard(p, index, true)
         )}
@@ -1413,7 +1539,7 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
             <div key={category} className="tag-group">
               <div className="tag-group-title">{category}</div>
 
-              <div className="tag-list">
+              <div className="tag-scroll-box">
                 {items.map((tag) => (
                   <label key={tag.id} className="tag-option">
                     <input
@@ -1487,7 +1613,8 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
                 <h3>조건에 맞는 사업이 없습니다</h3>
               </div>
             ) : (
-              <div className="cards">
+              <div className="cards scroll-box">
+
                 {allPrograms.map((p) => renderProgramCard(p))}
               </div>
             )}
@@ -1495,67 +1622,94 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
         )}
 
         {viewMode === 'organization' && (
-          <>
-            <section className="panel glass">
-              <div className="panel-header">
-                <h2>기관별 사업 보기</h2>
-                <p>기관을 선택하면 해당 기관이 운영하는 사업만 볼 수 있습니다.</p>
+  <>
+    <section className="panel glass">
+      <div className="panel-header">
+        <h2>기관별 사업 보기</h2>
+        <p>기관명을 검색하거나 선택하면 해당 기관이 운영하는 사업만 볼 수 있습니다.</p>
+      </div>
+
+      <input
+        className="field"
+        placeholder="기관명 검색 (예: 금산, 청소년, 상담)"
+        value={orgSearch}
+        onChange={(e) => setOrgSearch(e.target.value)}
+        style={{ marginBottom: 12 }}
+      />
+
+      <p style={{ marginBottom: 12 }}>
+        검색 결과: {filteredOrganizations.length}개
+      </p>
+
+      {filteredOrganizations.length === 0 ? (
+        <p style={{ padding: 12 }}>검색 결과가 없습니다.</p>
+      ) : (
+        <select
+  className="field"
+  value={form.organization_id}
+  onChange={(e) => {
+    const selectedId = e.target.value;
+    const selectedOrg = organizations.find(
+      (org) => String(org.id) === String(selectedId)
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      organization_id: selectedId,
+      organization: selectedOrg ? selectedOrg.name : '',
+    }));
+  }}
+>
+  <option value="">기관 선택</option>
+  {organizations.map((org) => (
+    <option key={org.id} value={org.id}>
+      {org.name}
+    </option>
+  ))}
+</select>
+      )}
+    </section>
+
+    {selectedOrganizationId && (
+      <>
+        <section className="panel">
+          {(() => {
+            const org = getOrganizationById(selectedOrganizationId);
+            return (
+              <div className="org-hero">
+                <div>
+                  <h2>{org?.name || '기관 없음'}</h2>
+                  <p>📞 {org?.phone || '연락처 없음'}</p>
+                  <p>{org?.address || '주소 없음'}</p>
+                  <p>담당자: {org?.contact_person || '담당자 없음'}</p>
+                </div>
               </div>
+            );
+          })()}
+        </section>
 
-              <select
-                className="field"
-                value={selectedOrganizationId}
-                onChange={(e) => setSelectedOrganizationId(e.target.value)}
-              >
-                <option value="">기관 선택</option>
-                {organizations.map((org) => (
-                  <option key={org.id} value={org.id}>
-                    {org.name}
-                  </option>
-                ))}
-              </select>
-            </section>
+        <section className="result-head">
+          <div>
+            <h2>이 기관의 사업</h2>
+          </div>
+          <div className="result-count">
+            {organizationPrograms.length}개
+          </div>
+        </section>
 
-            {selectedOrganizationId && (
-              <>
-                <section className="panel">
-                  {(() => {
-                    const org = getOrganizationById(selectedOrganizationId);
-                    return (
-                      <div className="org-hero">
-                        <div>
-                          <h2>{org?.name || '기관 없음'}</h2>
-                          <p>📞 {org?.phone || '연락처 없음'}</p>
-                          <p>{org?.address || '주소 없음'}</p>
-                          <p>담당자: {org?.contact_person || '담당자 없음'}</p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </section>
-
-                <section className="result-head">
-                  <div>
-                    <h2>이 기관의 사업</h2>
-                  </div>
-                  <div className="result-count">
-                    {organizationPrograms.length}개
-                  </div>
-                </section>
-
-                {organizationPrograms.length === 0 ? (
-                  <div className="empty-state">
-                    <h3>등록된 사업이 없습니다</h3>
-                  </div>
-                ) : (
-                  <div className="cards">
-                    {organizationPrograms.map((p) => renderProgramCard(p))}
-                  </div>
-                )}
-              </>
-            )}
-          </>
+        {organizationPrograms.length === 0 ? (
+          <div className="empty-state">
+            <h3>등록된 사업이 없습니다</h3>
+          </div>
+        ) : (
+          <div className="cards">
+            {organizationPrograms.map((p) => renderProgramCard(p))}
+          </div>
         )}
+      </>
+    )}
+  </>
+)}
 
         {isAdmin && (
           <section className="admin-section">
@@ -1566,7 +1720,7 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
 
             <div className="admin-grid">
 
-              <div className="panel" ref={formRef}>
+              <div className="panel admin-panel-scroll" ref={formRef}>
   <div className="panel-header compact">
     <h3>{editingId ? '사업 수정 중' : '사업 추가'}</h3>
     {editingId && (
@@ -1842,7 +1996,7 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
                 </div>
 
                 {orgUploadPreview.length > 0 && (
-                  <div className="preview-list">
+                  <div className="preview-list scroll-box">
                     {orgUploadPreview.slice(0, 10).map((row, index) => (
                       <div key={`${row.name}-${index}`} className="preview-item">
                         <strong>{row.name}</strong>
@@ -1880,7 +2034,7 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
                 </div>
 
                 {programUploadPreview.length > 0 && (
-                  <div className="preview-list">
+                  <div className="preview-list scroll-box">
                     {programUploadPreview.slice(0, 10).map((row, index) => (
                       <div key={`${row.name}-${index}`} className="preview-item">
                         <strong>{row.name}</strong>
@@ -1896,13 +2050,20 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
               <div className="panel">
   <div className="panel-header compact">
     <h3>기관 목록</h3>
+    <input
+  className="field"
+  placeholder="기관명 검색 (예: 금산, 청소년)"
+  value={orgSearch}
+  onChange={(e) => setOrgSearch(e.target.value)}
+  style={{ marginBottom: 12 }}
+/>
   </div>
 
   <div className="action-row" style={{ marginBottom: 12 }}>
     <button
       className="btn btn-secondary"
       onClick={() =>
-        setSelectedOrganizationIds(organizations.map((org) => org.id))
+        setSelectedOrganizationIds(filteredOrganizations.map((org) => org.id))
       }
     >
       기관 전체 선택
@@ -1923,8 +2084,14 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
     </button>
   </div>
 
-  <div className="simple-list">
-    {organizations.map((org) => (
+  <div className="simple-list scroll-box">
+
+
+{filteredOrganizations.length === 0 && (
+    <p style={{ padding: 20 }}>검색 결과가 없습니다.</p>
+  )}
+
+    {filteredOrganizations.map((org) => (
       <div key={org.id} className="simple-item">
         <div>
           <div style={{ marginBottom: 10 }}>
@@ -1970,43 +2137,55 @@ const [selectedOrganizationIds, setSelectedOrganizationIds] = useState([]);
 </div>
 
               <div className="panel">
-                <div className="panel-header compact">
-                  <h3>태그 목록</h3>
-                </div>
+  <div className="panel-header compact">
+    <h3>태그 목록</h3>
 
-                <div className="simple-list">
-                  {tags.map((tag) => (
-                    <div key={tag.id} className="simple-item">
-                      <div>
-                        <strong>
-                          {tag.name} {tag.is_active ? '' : '(비활성)'}
-                        </strong>
-                        <p>카테고리: {tag.category || '없음'}</p>
-                      </div>
-                      <div className="action-row">
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => handleEditTag(tag)}
-                        >
-                          수정
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => handleDeactivateTag(tag.id)}
-                        >
-                          비활성화
-                        </button>
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDeleteTag(tag.id)}
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+    <input
+      className="field"
+      placeholder="태그명 또는 카테고리 검색"
+      value={adminTagSearch}
+      onChange={(e) => setAdminTagSearch(e.target.value)}
+      style={{ marginTop: 10 }}
+    />
+  </div>
+
+  <div className="simple-list scroll-box">
+    {filteredAdminTags.length === 0 && (
+      <p style={{ padding: 20 }}>검색 결과가 없습니다.</p>
+    )}
+
+    {filteredAdminTags.map((tag) => (
+      <div key={tag.id} className="simple-item">
+        <div>
+          <strong>
+            {tag.name} {tag.is_active ? '' : '(비활성)'}
+          </strong>
+          <p>카테고리: {tag.category || '없음'}</p>
+        </div>
+        <div className="action-row">
+          <button
+            className="btn btn-secondary"
+            onClick={() => handleEditTag(tag)}
+          >
+            수정
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => handleDeactivateTag(tag.id)}
+          >
+            비활성화
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={() => handleDeleteTag(tag.id)}
+          >
+            삭제
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
             </div>
           </section>
         )}

@@ -610,3 +610,59 @@ a {
   height: 40px;
   object-fit: contain;
 }
+
+.scroll-box {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.scroll-box::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-box::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.scroll-box::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tag-scroll-box {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fafafa;
+}
+
+.tag-scroll-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tag-scroll-box::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.admin-panel-scroll {
+  max-height: 720px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.admin-panel-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-panel-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.admin-panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
