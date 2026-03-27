@@ -455,20 +455,13 @@ function App() {
     setTags(data || []);
   };
 
-  const getOrganizationName = (organizationId, fallbackName) => {
-    const org = organizations.find((item) => item.id === organizationId);
-    return org?.name || fallbackName || '기관 없음';
-  };
+  const getOrganizationName = useCallback((organizationId, fallbackName) => {
+  const org = organizations.find((item) => item.id === organizationId);
+  return org?.name || fallbackName || '기관 없음';
+}, [organizations]);
 
   const getOrganizationById = (organizationId) => {
     return organizations.find((item) => item.id === organizationId) || null;
-  };
-
-  const normalizeCaseText = (text) => {
-    return String(text || '')
-      .toLowerCase()
-      .replace(/\s+/g, '')
-      .replace(/[^가-힣a-z0-9]/g, '');
   };
 
   const validTagNames = useMemo(() => {
@@ -1258,7 +1251,7 @@ const groupedPrograms = useMemo(() => {
   });
 
   return result;
-}, [recommendedPrograms, organizations]);
+}, [recommendedPrograms, getOrganizationName]);
 
 const allPrograms = useMemo(() => {
   const keyword = allProgramSearch.trim().toLowerCase();
@@ -1288,7 +1281,7 @@ const allPrograms = useMemo(() => {
       );
     })
     .sort((a, b) => a.name.localeCompare(b.name));
-}, [programs, passesRequiredFilters, allProgramSearch, organizations]);
+}, [programs, passesRequiredFilters, allProgramSearch, getOrganizationName]);
 
   const organizationPrograms = useMemo(() => {
     if (!selectedOrganizationId) return [];
