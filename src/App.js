@@ -102,11 +102,29 @@ const TAG_KEYWORD_MAP = {
 
   // 🟠 폭력 / 학대
   학교폭력: [
-    '학교폭력', '따돌림', '왕따', '괴롭힘',
-    '집단괴롭힘', '폭력 피해',
-    '친구들이 때림', '맞고', '폭행',
-    'bullying', '무시', '욕함', '욕먹'
-  ],
+  '학교폭력',
+
+  // 따돌림 계열
+  '따돌림', '왕따',
+
+  // 괴롭힘 (어간)
+  '괴롭',
+
+  // 놀림
+  '놀리', '놀림',
+
+  // 폭력
+  '폭행', '때리', '맞고', '맞음',
+
+  // 언어폭력
+  '욕', '욕하', '욕먹',
+
+  // 관계
+  '무시', '따', '배척',
+
+  // 영어
+  'bullying'
+],
 
   학대방임: [
     '학대', '방임', '방치', '유기',
@@ -213,10 +231,12 @@ const TAG_KEYWORD_MAP = {
     '보호자없', '보호자 없음'
   ],
 
-  가족돌봄청소년: [
-    '가족돌봄', '간병',
-    '부모를돌봄', '동생을 돌봄'
-  ],
+ 가족돌봄청소년: [
+  '가족돌봄', '간병',
+  '부모를돌보', '동생을돌보',
+  '가족을돌보', '형제를돌보',
+  '돌보느라', '돌보면서'
+],
 
   양육환경위기: [
     '양육어려움', '양육이안됨',
@@ -278,41 +298,48 @@ const TAG_KEYWORD_MAP = {
 
 const TAG_PATTERN_MAP = {
   자살위험: [
-    '사는게 의미가 없',
-    '살고싶지 않',
-    '그만 살고 싶',
-    '사라지고 싶',
-    '모든걸 끝내고 싶'
+    '사는게의미가없',
+    '살고싶지않',
+    '그만살고싶',
+    '사라지고싶',
+    '모든걸끝내고싶'
   ],
 
   우울: [
-    '아무것도 하기 싫',
-    '기운이 없',
-    '너무 힘들',
-    '지쳐',
-    '의욕이 없'
+    '아무것도하기싫',
+    '기운이없',
+    '너무힘들',
+    '의욕이없',
+    '너무버겁',
+    '지쳐있'
   ],
 
   불안: [
-    '계속 걱정',
-    '마음이 불안',
-    '긴장이 된다',
+    '계속걱정',
+    '마음이불안',
+    '긴장된다',
     '무서워',
     '겁난다'
   ],
 
   학교폭력: [
-    '친구들이 나를 무시',
-    '학교에서 힘들',
-    '친구 관계가 어렵',
-    '친구들이 괴롭힌다'
-  ],
+  '친구가괴롭',
+  '친구들이괴롭',
+  '친구가욕',
+  '친구들이욕',
+  '친구가때리',
+  '친구들이때리',
+  '친구가무시',
+  '친구들이무시',
+  '학교에서괴롭',
+  '학교에서따돌림'
+],
 
   경제적어려움: [
-    '생활이 어렵',
-    '돈이 부족',
-    '경제적으로 힘들',
-    '형편이 안 좋'
+    '생활이어렵',
+    '돈이부족',
+    '경제적으로힘들',
+    '형편이안좋'
   ]
 };
 
@@ -472,6 +499,14 @@ const extractTagsFromText = (text) => {
   const normalized = normalizeText(text);
   const found = [];
 
+  // 태그 추가 헬퍼
+  const addTag = (tag) => {
+    if (!validTagNames.has(tag)) return;
+    found.push(tag);
+  };
+
+  const hasTag = (tag) => found.includes(tag);
+
   // 🔹 키워드 매칭
   Object.entries(TAG_KEYWORD_MAP).forEach(([tag, keywords]) => {
     if (!validTagNames.has(tag)) return;
@@ -481,7 +516,7 @@ const extractTagsFromText = (text) => {
       return normalized.includes(normalizedKeyword);
     });
 
-    if (matched) found.push(tag);
+    if (matched) addTag(tag);
   });
 
   // 🔥 패턴 매칭
@@ -493,192 +528,478 @@ const extractTagsFromText = (text) => {
       return normalized.includes(normalizedPattern);
     });
 
-    if (matched && !found.includes(tag)) {
-      found.push(tag);
-    }
+    if (matched) addTag(tag);
   });
 
- // 🔥🔥🔥 문맥 조합 룰
+  // 🔥🔥🔥 문맥 조합 룰
+
+// 🔥🔥🔥 교사/상담 기록 대응
+
+// 정서 문제
 if (
-  normalized.includes('살') &&
-  (
-    normalized.includes('놀림') ||
-    normalized.includes('따돌림') ||
-    normalized.includes('괴롭힘') ||
-    normalized.includes('왕따') ||
-    normalized.includes('무시')
-  )
+  normalized.includes('정서적으로') ||
+  normalized.includes('정서불안') ||
+  normalized.includes('정서적불안정')
 ) {
-  found.push('비만');
-  found.push('학교폭력');
+  addTag('우울');
 }
 
 if (
+  normalized.includes('위축된모습') ||
+  normalized.includes('위축됨') ||
+  normalized.includes('위축된')
+) {
+  addTag('불안');
+}
+
+// 관계 문제
+if (
+  normalized.includes('관계갈등') ||
+  normalized.includes('친구갈등') ||
+  normalized.includes('대인관계어려움') ||
+  normalized.includes('또래관계어려움')
+) {
+  addTag('우울');
+  addTag('불안');
+}
+
+// 학교 적응
+if (
+  normalized.includes('학교생활적응어려움') ||
+  normalized.includes('학교적응어려움') ||
+  normalized.includes('학교생활어려움')
+) {
+  addTag('학업중단위기');
+}
+
+// 학습 문제
+if (
+  normalized.includes('학습부진') ||
+  normalized.includes('학습저하') ||
+  normalized.includes('학습집중어려움')
+) {
+  addTag('교과부족');
+}
+
+if (
+  normalized.includes('기초학습미달') ||
+  normalized.includes('기초학력미달')
+) {
+  addTag('기초학습부족');
+}
+
+// 행동 문제
+if (
+  normalized.includes('충동적행동') ||
+  normalized.includes('산만한행동') ||
+  normalized.includes('주의집중어려움')
+) {
+  addTag('ADHD');
+}
+
+// 폭력 피해 표현
+if (
+  normalized.includes('피해호소') ||
+  normalized.includes('폭력피해') ||
+  normalized.includes('괴롭힘피해')
+) {
+  addTag('학교폭력');
+}
+
+// 가정 문제
+if (
+  normalized.includes('가정환경불안정') ||
+  normalized.includes('가정문제') ||
+  normalized.includes('가정갈등')
+) {
+  addTag('가정급변');
+}
+
+// 경제 문제
+if (
+  normalized.includes('경제적어려움') ||
+  normalized.includes('생계곤란') ||
+  normalized.includes('생활곤란')
+) {
+  addTag('경제적어려움');
+}
+
+// 돌봄 문제
+if (
+  normalized.includes('돌봄공백') ||
+  normalized.includes('보호자부재')
+) {
+  addTag('부모부재');
+}
+
+// 🔥 친구 + 공격 행동
+if (
+  normalized.includes('친구') &&
+  (
+    normalized.includes('괴롭') ||
+    normalized.includes('때리') ||
+    normalized.includes('욕') ||
+    normalized.includes('무시') ||
+    normalized.includes('놀리') ||
+    normalized.includes('따돌') ||
+    normalized.includes('왕따')
+  )
+) {
+  addTag('학교폭력');
+}
+
+// 🔥 학교 + 공격 행동
+if (
   normalized.includes('학교') &&
   (
+    normalized.includes('괴롭') ||
+    normalized.includes('때리') ||
+    normalized.includes('욕') ||
+    normalized.includes('무시') ||
+    normalized.includes('놀리') ||
+    normalized.includes('따돌')
+  )
+) {
+  addTag('학교폭력');
+}
+
+// 🔥 피해 + 감정
+if (
+  hasTag('학교폭력') &&
+  (
+    normalized.includes('힘들') ||
+    normalized.includes('무섭') ||
+    normalized.includes('가기싫') ||
+    normalized.includes('가기무섭')
+  )
+) {
+  addTag('불안');
+  addTag('학업중단위기');
+}
+  
+  // 자살 / 자해
+  if (
+    normalized.includes('죽고싶') ||
+    normalized.includes('살기싫') ||
+    normalized.includes('끝내고싶') ||
+    normalized.includes('사라지고싶')
+  ) {
+    addTag('자살위험');
+  }
+
+  if (
+    normalized.includes('자해') ||
+    normalized.includes('손목') ||
+    normalized.includes('몸을해')
+  ) {
+    addTag('자해위험');
+  }
+
+  // 학교폭력 / 괴롭힘
+  if (
+    normalized.includes('따돌림') ||
+    normalized.includes('왕따') ||
+    normalized.includes('괴롭') ||
+    normalized.includes('폭행') ||
+    normalized.includes('욕') ||
+    normalized.includes('무시')
+  ) {
+    addTag('학교폭력');
+  }
+
+  // 학교폭력 + 학교 회피
+  if (
+    hasTag('학교폭력') &&
+    (
+      normalized.includes('학교가기싫') ||
+      normalized.includes('학교가기무섭') ||
+      normalized.includes('결석') ||
+      normalized.includes('등교거부') ||
+      normalized.includes('학교가기가싫')
+    )
+  ) {
+    addTag('학업중단위기');
+  }
+
+  // 학교에서 맞음 = 학교폭력, 학대방임 제거
+  if (
+    hasTag('학대방임') &&
+    (
+      normalized.includes('학교') ||
+      normalized.includes('친구')
+    )
+  ) {
+    const idx = found.indexOf('학대방임');
+    if (idx !== -1) found.splice(idx, 1);
+  }
+
+  // 외모 / 살 + 괴롭힘
+  if (
+    normalized.includes('살') &&
+    (
+      normalized.includes('놀림') ||
+      normalized.includes('따돌림') ||
+      normalized.includes('괴롭') ||
+      normalized.includes('왕따') ||
+      normalized.includes('무시')
+    )
+  ) {
+    addTag('비만');
+    addTag('학교폭력');
+  }
+
+  if (
+    normalized.includes('외모') &&
+    (
+      normalized.includes('놀림') ||
+      normalized.includes('괴롭') ||
+      normalized.includes('따돌')
+    )
+  ) {
+    addTag('학교폭력');
+    addTag('불안');
+  }
+
+  // 전반적 스트레스 / 힘듦
+  if (
+    normalized.includes('스트레스') ||
+    normalized.includes('힘들') ||
+    normalized.includes('지쳤') ||
+    normalized.includes('버겁') ||
+    normalized.includes('답답')
+  ) {
+    // 감정은 보조 신호로만 사용
+    if (found.length === 0) {
+      addTag('우울');
+    }
+  }
+
+  // 불안 표현
+  if (
+    normalized.includes('조마조마') ||
+    normalized.includes('긴장') ||
+    normalized.includes('초조') ||
     normalized.includes('무서') ||
-    normalized.includes('가기싫') ||
-    normalized.includes('가기싫어') ||
-    normalized.includes('가기두려') ||
-    normalized.includes('괴롭힘') ||
-    normalized.includes('따돌림')
-  )
-) {
-  found.push('학교폭력');
-}
+    normalized.includes('겁나') ||
+    normalized.includes('떨려')
+  ) {
+    addTag('불안');
+  }
 
-if (
-  normalized.includes('집') &&
-  (
-    normalized.includes('힘들') ||
-    normalized.includes('무섭') ||
-    normalized.includes('불안') ||
-    normalized.includes('싸움') ||
-    normalized.includes('혼자')
-  )
-) {
-  found.push('가정급변');
-}
+  // 무기력 표현
+  if (
+    normalized.includes('하기싫') ||
+    normalized.includes('아무것도하기싫') ||
+    normalized.includes('움직이기싫') ||
+    normalized.includes('기운이없') ||
+    normalized.includes('축처짐') ||
+    normalized.includes('멍함')
+  ) {
+    addTag('무기력');
+    addTag('우울');
+  }
 
-// 🔥🔥🔥 문맥 조합 룰 (실전용)
+  // 분노 / 공격성
+  if (
+    normalized.includes('짜증') ||
+    normalized.includes('화남') ||
+    normalized.includes('화나') ||
+    normalized.includes('예민') ||
+    normalized.includes('신경질') ||
+    normalized.includes('분노조절')
+  ) {
+    addTag('분노폭력');
+  }
 
-// 🔴 자살 / 자해
-if (
-  normalized.includes('죽고싶') ||
-  normalized.includes('살기싫') ||
-  normalized.includes('끝내고싶') ||
-  normalized.includes('사라지고싶')
-) {
-  found.push('자살위험');
-}
+  // 공부 / 학업
+  if (
+    normalized.includes('공부') &&
+    (
+      normalized.includes('스트레스') ||
+      normalized.includes('힘들') ||
+      normalized.includes('버겁') ||
+      normalized.includes('지쳤')
+    )
+  ) {
+    addTag('교과부족');
+    addTag('우울');
+  }
 
-if (
-  normalized.includes('자해') ||
-  normalized.includes('손목') ||
-  normalized.includes('몸을해')
-) {
-  found.push('자해위험');
-}
+  if (
+    normalized.includes('공부') &&
+    (
+      normalized.includes('못') ||
+      normalized.includes('어려') ||
+      normalized.includes('힘들')
+    )
+  ) {
+    addTag('교과부족');
+  }
 
-// 🟠 학교폭력 / 괴롭힘
-if (
-  normalized.includes('따돌림') ||
-  normalized.includes('왕따') ||
-  normalized.includes('괴롭힘') ||
-  normalized.includes('폭행') ||
-  normalized.includes('맞고')
-) {
-  found.push('학교폭력');
-}
+  if (
+    normalized.includes('성적') &&
+    (
+      normalized.includes('떨어') ||
+      normalized.includes('낮') ||
+      normalized.includes('스트레스') ||
+      normalized.includes('걱정') ||
+      normalized.includes('불안')
+    )
+  ) {
+    addTag('교과부족');
+    addTag('불안');
+  }
 
-// 🟠 외모 + 괴롭힘
-if (
-  normalized.includes('살') &&
-  (
-    normalized.includes('놀림') ||
-    normalized.includes('따돌림') ||
-    normalized.includes('괴롭힘') ||
-    normalized.includes('왕따') ||
-    normalized.includes('무시')
-  )
-) {
-  found.push('비만');
-  found.push('학교폭력');
-}
+  if (
+    normalized.includes('기초학습') ||
+    normalized.includes('읽기') ||
+    normalized.includes('쓰기') ||
+    normalized.includes('셈하기')
+  ) {
+    addTag('기초학습부족');
+  }
 
-// 🟢 우울 / 정서
-if (
-  normalized.includes('힘들') ||
-  normalized.includes('지쳤') ||
-  normalized.includes('의욕없') ||
-  normalized.includes('무기력')
-) {
-  found.push('우울');
-}
+  if (
+    normalized.includes('학교') &&
+    (
+      normalized.includes('가기싫') ||
+      normalized.includes('가기무섭') ||
+      normalized.includes('가기두려') ||
+      normalized.includes('결석') ||
+      normalized.includes('등교거부')
+    )
+  ) {
+    addTag('학업중단위기');
+  }
 
-if (
-  normalized.includes('불안') ||
-  normalized.includes('걱정') ||
-  normalized.includes('무서') ||
-  normalized.includes('두려')
-) {
-  found.push('불안');
-}
+  // ADHD / 행동
+  if (
+    normalized.includes('충동') ||
+    normalized.includes('가만히있지못') ||
+    normalized.includes('행동문제')
+  ) {
+    addTag('ADHD');
+  }
 
-// 🔵 학교 / 등교 문제
-if (
-  normalized.includes('학교') &&
-  (
-    normalized.includes('가기싫') ||
-    normalized.includes('가기싫어') ||
-    normalized.includes('가기두려') ||
-    normalized.includes('무서')
-  )
-) {
-  found.push('학교폭력');
-  found.push('학업중단위기');
-}
+  // 친구 관계
+  if (
+    normalized.includes('친구') &&
+    (
+      normalized.includes('힘들') ||
+      normalized.includes('어려') ||
+      normalized.includes('문제')
+    )
+  ) {
+    addTag('우울');
+  }
 
-// 🟣 가정 문제
-if (
-  normalized.includes('집') &&
-  (
-    normalized.includes('힘들') ||
-    normalized.includes('무섭') ||
-    normalized.includes('싸움') ||
-    normalized.includes('불안') ||
-    normalized.includes('혼자')
-  )
-) {
-  found.push('가정급변');
-}
+  if (
+    normalized.includes('친구') &&
+    (
+      normalized.includes('스트레스') ||
+      normalized.includes('지쳤')
+    )
+  ) {
+    addTag('우울');
+    addTag('불안');
+  }
 
-// 🟡 경제 문제
-if (
-  normalized.includes('돈') &&
-  (
-    normalized.includes('없') ||
-    normalized.includes('부족') ||
+  if (
+    normalized.includes('놀림') &&
+    normalized.includes('위축')
+  ) {
+    addTag('학교폭력');
+    addTag('불안');
+  }
+
+  // 자신감 / 자존감
+  if (
+    normalized.includes('자신감') ||
+    normalized.includes('자존감')
+  ) {
+    addTag('불안');
+    addTag('우울');
+  }
+
+  if (
+    normalized.includes('위축') ||
+    normalized.includes('눈치')
+  ) {
+    addTag('불안');
+  }
+
+  // 가정 문제
+  if (
+    normalized.includes('부모') &&
+    (
+      normalized.includes('싸움') ||
+      normalized.includes('갈등')
+    )
+  ) {
+    addTag('가정급변');
+    addTag('우울');
+  }
+
+  if (
+    (normalized.includes('집') || normalized.includes('가정') || normalized.includes('부모')) &&
+    (
+      normalized.includes('스트레스') ||
+      normalized.includes('힘들') ||
+      normalized.includes('불안') ||
+      normalized.includes('무섭')
+    )
+  ) {
+    addTag('가정급변');
+    addTag('우울');
+  }
+
+  if (
+    normalized.includes('집') &&
+    normalized.includes('가기싫')
+  ) {
+    addTag('가정급변');
+  }
+
+  // 경제
+  if (
+    normalized.includes('돈') &&
+    (
+      normalized.includes('없') ||
+      normalized.includes('부족') ||
+      normalized.includes('힘들')
+    )
+  ) {
+    addTag('경제적어려움');
+  }
+
+  if (
+    normalized.includes('형편') ||
+    normalized.includes('생활비') ||
+    normalized.includes('생계') ||
+    normalized.includes('경제')
+  ) {
+    addTag('경제적어려움');
+  }
+
+  if (
+    normalized.includes('밥') &&
+    normalized.includes('못')
+  ) {
+    addTag('결식');
+  }
+
+  if (hasTag('기타저소득')) {
+    addTag('경제적어려움');
+  }
+
+  if (
+    hasTag('경제적어려움') &&
     normalized.includes('힘들')
-  )
-) {
-  found.push('경제적어려움');
-}
+  ) {
+    addTag('우울');
+  }
 
-// 🟣 부모 부재
-if (
-  normalized.includes('혼자') &&
-  (
-    normalized.includes('집') ||
-    normalized.includes('지냄')
-  )
-) {
-  found.push('부모부재');
-}
-
-// 🟤 다문화
-if (
-  normalized.includes('한국어') &&
-  normalized.includes('어려')
-) {
-  found.push('다문화');
-}
-
-// 🟤 장애 + 학습
-if (
-  normalized.includes('장애') &&
-  (
-    normalized.includes('공부') ||
-    normalized.includes('학교')
-  )
-) {
-  found.push('장애');
-  found.push('기초학습부족');
-}
-
-  // 🔥🔥🔥 문맥 조합 룰 (추가)
-
-  // 다문화 + 학교 적응
+  // 다문화 / 언어
   if (
     normalized.includes('다문화') &&
     (
@@ -688,9 +1009,8 @@ if (
       normalized.includes('힘들')
     )
   ) {
-    found.push('다문화');
-    found.push('기초학습부족');
-    found.push('우울');
+    addTag('다문화');
+    addTag('기초학습부족');
   }
 
   if (
@@ -698,322 +1018,69 @@ if (
     (
       normalized.includes('못') ||
       normalized.includes('어려') ||
-      normalized.includes('힘들')
-    )
-  ) {
-    found.push('다문화');
-    found.push('기초학습부족');
-  }
-
-  // 친구 관계 문제
-  if (
-    normalized.includes('친구') &&
-    (
       normalized.includes('힘들') ||
-      normalized.includes('어려') ||
-      normalized.includes('문제')
+      normalized.includes('서툴')
     )
   ) {
-    found.push('우울');
+    addTag('다문화');
+    addTag('기초학습부족');
   }
 
-  if (
-    normalized.includes('친구') &&
-    (
-      normalized.includes('무시') ||
-      normalized.includes('괴롭힘') ||
-      normalized.includes('따돌림')
-    )
-  ) {
-    found.push('학교폭력');
-  }
+// 가족돌봄
+if (
+  normalized.includes('가족돌보') ||
+  normalized.includes('동생돌보') ||
+  normalized.includes('동생을돌보') ||
+  normalized.includes('부모돌보') ||
+  normalized.includes('부모를돌보') ||
+  normalized.includes('형제돌보') ||
+  normalized.includes('형제를돌보') ||
+  normalized.includes('가족돌봄') ||
+  normalized.includes('간병') ||
+  normalized.includes('돌보느라') ||
+  normalized.includes('돌보면서')
+) {
+  addTag('가족돌봄청소년');
+}
 
-  // 자존감 / 외모 / 위축
-  if (
-    normalized.includes('자신감') ||
-    normalized.includes('자존감')
-  ) {
-    found.push('불안');
-    found.push('우울');
-  }
+ if (
+  hasTag('가족돌봄청소년') &&
+  (
+    normalized.includes('학교') ||
+    normalized.includes('학업') ||
+    normalized.includes('일상유지') ||
+    normalized.includes('어려움') ||
+    normalized.includes('힘들')
+  )
+) {
+  addTag('학업중단위기');
+  addTag('우울');
+}
 
-  if (
-    normalized.includes('위축') ||
-    normalized.includes('눈치')
-  ) {
-    found.push('불안');
-  }
-
-  // 가정 문제 확장
-  if (
-    normalized.includes('부모') &&
-    (
-      normalized.includes('싸움') ||
-      normalized.includes('갈등')
-    )
-  ) {
-    found.push('가정급변');
-    found.push('우울');
-  }
-
-  if (
-    normalized.includes('집') &&
-    normalized.includes('가기싫')
-  ) {
-    found.push('가정급변');
-  }
-
-  // 공부 / 학습 문제
-  if (
-    normalized.includes('공부') &&
-    (
-      normalized.includes('힘들') ||
-      normalized.includes('못') ||
-      normalized.includes('어려')
-    )
-  ) {
-    found.push('교과부족');
-  }
-
-  if (
-    normalized.includes('학교') &&
-    normalized.includes('싫')
-  ) {
-    found.push('학업중단위기');
-  }
-
-  // 경제 + 생활
-  if (
-    normalized.includes('돈') &&
-    normalized.includes('없')
-  ) {
-    found.push('경제적어려움');
-  }
-
-  if (
-    normalized.includes('밥') &&
-    normalized.includes('못')
-  ) {
-    found.push('결식');
-  }
-
-  // 고립 / 혼자
+  // 부모 부재 / 혼자
   if (
     normalized.includes('혼자') &&
     normalized.includes('외로')
   ) {
-    found.push('우울');
+    addTag('우울');
   }
 
   if (
     normalized.includes('혼자') &&
-    normalized.includes('지냄')
-  ) {
-    found.push('부모부재');
-  }
-
-  // 외모 + 따돌림
-  if (
-    normalized.includes('살') &&
     (
-      normalized.includes('놀림') ||
-      normalized.includes('따돌림') ||
-      normalized.includes('괴롭힘') ||
-      normalized.includes('왕따') ||
-      normalized.includes('무시')
+      normalized.includes('지냄') ||
+      normalized.includes('집') ||
+      normalized.includes('시간이많')
     )
   ) {
-    found.push('비만');
-    found.push('학교폭력');
+    addTag('부모부재');
   }
 
-  // 학교 + 무서움
-  if (
-    normalized.includes('학교') &&
-    (
-      normalized.includes('무서') ||
-      normalized.includes('가기싫') ||
-      normalized.includes('가기두려') ||
-      normalized.includes('괴롭힘') ||
-      normalized.includes('따돌림')
-    )
-  ) {
-    found.push('학교폭력');
-    found.push('학업중단위기');
+  // 우울 있으면 무기력도 보조로
+  if (hasTag('우울')) {
+    addTag('무기력');
   }
 
-  // 집 + 힘듦
-  if (
-    normalized.includes('집') &&
-    (
-      normalized.includes('힘들') ||
-      normalized.includes('무섭') ||
-      normalized.includes('불안') ||
-      normalized.includes('싸움') ||
-      normalized.includes('혼자')
-    )
-  ) {
-    found.push('가정급변');
-  }
-
-  // 🔥🔥🔥 실제 테스트 기반 보강 룰
-
-// 학교폭력 + 학교 회피 → 학업중단위기
-if (
-  found.includes('학교폭력') &&
-  (
-    normalized.includes('학교가기싫') ||
-    normalized.includes('학교가기무섭') ||
-    normalized.includes('결석') ||
-    normalized.includes('등교거부')
-  )
-) {
-  found.push('학업중단위기');
-}
-
-// 폭행은 학교폭력이지 학대방임 아님 → 제거
-if (
-  found.includes('학대방임') &&
-  (
-    normalized.includes('학교') ||
-    normalized.includes('친구')
-  )
-) {
-  const idx = found.indexOf('학대방임');
-  if (idx !== -1) found.splice(idx, 1);
-}
-
-// 놀림 + 위축 → 불안 + 학교폭력
-if (
-  normalized.includes('놀림') &&
-  normalized.includes('위축')
-) {
-  found.push('학교폭력');
-  found.push('불안');
-}
-
-// 우울 → 무기력 자동 추가
-if (found.includes('우울')) {
-  found.push('무기력');
-}
-
-// 경제 관련 강화
-if (
-  normalized.includes('형편') ||
-  normalized.includes('생활비') ||
-  normalized.includes('생계') ||
-  normalized.includes('경제')
-) {
-  found.push('경제적어려움');
-}
-
-// 저소득 → 경제적어려움도 같이
-if (found.includes('기타저소득')) {
-  found.push('경제적어려움');
-}
-
-// 다문화 + 언어 문제
-if (
-  normalized.includes('한국어') &&
-  (
-    normalized.includes('어려') ||
-    normalized.includes('못') ||
-    normalized.includes('힘들')
-  )
-) {
-  found.push('다문화');
-  found.push('기초학습부족');
-}
-
-// 다문화 + 학교 적응
-if (
-  normalized.includes('다문화') &&
-  normalized.includes('학교')
-) {
-  found.push('기초학습부족');
-}
-
-// 기초학습 직접 표현
-if (
-  normalized.includes('읽기') ||
-  normalized.includes('쓰기') ||
-  normalized.includes('기초학습')
-) {
-  found.push('기초학습부족');
-}
-
-// 성적 저하 → 교과부족
-if (
-  normalized.includes('성적') &&
-  normalized.includes('떨어')
-) {
-  found.push('교과부족');
-}
-
-// 학교 가기 싫음 → 학업중단위기
-if (
-  normalized.includes('학교가기싫') ||
-  normalized.includes('결석') ||
-  normalized.includes('등교거부')
-) {
-  found.push('학업중단위기');
-}
-
-// 충동성 / 행동문제
-if (
-  normalized.includes('충동') ||
-  normalized.includes('가만히있지못') ||
-  normalized.includes('행동문제')
-) {
-  found.push('ADHD');
-}
-
-// 외모 + 놀림
-if (
-  normalized.includes('외모') &&
-  normalized.includes('놀림')
-) {
-  found.push('학교폭력');
-  found.push('불안');
-}
-
-// 가족돌봄
-if (
-  normalized.includes('동생돌봄') ||
-  normalized.includes('가족돌봄') ||
-  normalized.includes('간병')
-) {
-  found.push('가족돌봄청소년');
-}
-
-// 돌봄 + 학업 어려움
-if (
-  found.includes('가족돌봄청소년') &&
-  (
-    normalized.includes('학교') ||
-    normalized.includes('학업')
-  )
-) {
-  found.push('학업중단위기');
-}
-
-// 부모 부재
-if (
-  normalized.includes('부모부재') ||
-  normalized.includes('혼자지냄')
-) {
-  found.push('부모부재');
-}
-
-// 경제 + 불안 같이 표현
-if (
-  found.includes('경제적어려움') &&
-  normalized.includes('힘들')
-) {
-  found.push('우울');
-}
-
-  // 🔥 중복 제거
   return [...new Set(found)];
 };
 
