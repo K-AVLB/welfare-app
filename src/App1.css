@@ -672,3 +672,240 @@ a {
   overflow-y: auto;
   padding-right: 8px;
 }
+
+.tag-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tag-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #2563eb;
+}
+
+.org-group {
+  margin-bottom: 16px;
+  padding-left: 12px;
+}
+
+.org-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.program-simple {
+  margin-bottom: 8px;
+}
+
+.program-simple-title {
+  cursor: pointer;
+  padding: 8px 12px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.program-simple-title:hover {
+  background: #e5e7eb;
+}
+
+.program-detail-box {
+  margin-top: 6px;
+  padding: 10px;
+  background: #fafafa;
+  border-left: 3px solid #2563eb;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.tag-section-scroll {
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.tag-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tag-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #2563eb;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+  padding-bottom: 8px;
+}
+
+/* 기본 */
+.tag-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px 12px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+/* 🔴 위험 태그 */
+.critical-tag {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+}
+
+.critical-tag .tag-title {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.critical-tag:hover {
+  background: #fecaca;
+}
+
+
+/* 🔴 최상위 위험 */
+.high-risk {
+  background: #dc2626;
+  color: white;
+  border: 1px solid #b91c1c;
+}
+
+.high-risk .tag-title {
+  font-weight: 800;
+}
+
+/* 🟠 중간 위험 */
+.medium-risk {
+  background: #fed7aa;
+  border: 1px solid #fb923c;
+}
+
+.medium-risk .tag-title {
+  color: #9a3412;
+  font-weight: 700;
+}
+
+.tag-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tag-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 18px 20px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+.tag-header:hover {
+  background: #e2e8f0;
+}
+
+.tag-title {
+  background: transparent !important;
+  color: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.tag-toggle {
+  background: transparent !important;
+  font-size: 20px;
+  font-weight: 700;
+  color: inherit;
+}
+
+.tag-section-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 8px;
+  margin-top: 10px;
+}
+
+.org-group {
+  margin-bottom: 16px;
+  padding-left: 12px;
+}
+
+.org-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.program-simple {
+  margin-bottom: 8px;
+}
+
+.program-simple-title {
+  width: 100%;
+  cursor: pointer;
+  padding: 10px 12px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.program-simple-title:hover {
+  background: #e5e7eb;
+}
+
+.program-detail-box {
+  margin-top: 6px;
+  padding: 10px;
+  background: #fafafa;
+  border-left: 3px solid #2563eb;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* 위험도 스타일 */
+.high-risk {
+  background: #dc2626;
+  color: white;
+  border: 1px solid #b91c1c;
+}
+
+.high-risk:hover {
+  background: #b91c1c;
+}
+
+.medium-risk {
+  background: #fed7aa;
+  color: #7c2d12;
+  border: 1px solid #fb923c;
+}
+
+.medium-risk:hover {
+  background: #fdba74;
+}

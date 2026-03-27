@@ -9,84 +9,328 @@ import * as XLSX from 'xlsx';
 import { supabase } from './supabase';
 import './App1.css';
 
+
+
+
+
+const CORE_PROBLEM_TAGS = [
+  '자살위험',
+  '자해위험',
+  '학교폭력',
+  '학대방임',
+  '성폭력',
+  '우울',
+  '불안',
+  '가정급변',
+  '분노폭력',
+  '학업중단위기'
+];
+
+const CONTEXT_TAGS = [
+  '한부모',
+  '조부모가정',
+  '다문화',
+  '친척돌봄',
+  '기초생활수급자',
+  '법정차상위',
+  '기타저소득'
+];
+
 const CRITICAL_TAGS = ['자해위험', '학대방임', '학교폭력', '자살위험', '성폭력'];
 
 const TAG_WEIGHTS = {
   자살위험: 110,
   자해위험: 105,
+  학교폭력: 95,
   학대방임: 100,
   성폭력: 100,
-  학교폭력: 95,
 
-  결식: 85,
-  가정급변: 85,
-  양육환경위기: 80,
-  가족돌봄청소년: 80,
-
-  기초생활수급자: 75,
-  법정차상위: 70,
-  경제적어려움: 70,
-  학업중단위기: 70,
   우울: 70,
-  학교밖청소년: 70,
-  소년소녀가장: 70,
-
   불안: 65,
-  분노폭력: 65,
-  기타저소득: 65,
-
-  법정한부모: 60,
-  부모부재: 60,
-  시설보호: 60,
-  특수교육대상자: 60,
-  북한이탈주민: 60,
-  난민: 60,
-  장애: 60,
+  분노폭력: 80,
   무기력: 60,
 
-  한부모: 55,
-  질병: 55,
+  학업중단위기: 85,
+  기초학습부족: 60,
+  교과부족: 50,
+  ADHD: 55,
 
+  경제적어려움: 45,
+  결식: 65,
+  기초생활수급자: 40,
+  법정차상위: 35,
+  기타저소득: 30,
+
+  가정급변: 85,
+  부모부재: 80,
+  가족돌봄청소년: 90,
+  양육환경위기: 75,
   조부모가정: 50,
+  친척돌봄: 50,
+  한부모: 55,
+  시설보호: 85,
+
   다문화: 50,
-  ADHD: 50,
+  장애: 65,
+  질병: 55,
+  비만: 40,
 
-  친척돌봄: 45,
+  북한이탈주민: 60,
+  난민: 60,
 
-  기초학습부족: 40,
-
-  교과부족: 35,
-  비만: 30,
-
-  기타: 20,
+  기타: 10
 };
+
+const HIGH_RISK_TAGS = ['자살위험', '자해위험'];
+
+const MEDIUM_RISK_TAGS = ['학교폭력', '학대방임', '성폭력'];
+
 
 const TAG_KEYWORD_MAP = {
-  우울: ['우울', '무기력', '의욕없음'],
-  불안: ['불안', '걱정', '긴장'],
-  자해위험: ['자해', '자해시도'],
-  자살위험: ['자살', '죽고싶'],
-  학교폭력: ['학교폭력', '괴롭힘', '따돌림'],
-  학대방임: ['학대', '방임'],
-  가정급변: ['가출', '이혼', '가정문제', '부모문제', '위기', '긴급'],
-  경제적어려움: ['가난', '돈없', '경제', '형편', '기초생활', '차상위', '지원금'],
-  돌봄: ['돌봄', '보육', '양육'],
-  교육: ['학습', '공부', '성적', '교육'],
-  장애: ['장애'],
-  한부모: ['한부모'],
-  다문화: ['다문화', '외국인'],
-  주거: ['주거', '집'],
-  의료: ['의료', '치료', '병원', '건강'],
-  취업: ['취업', '일자리', '직업'],
-  자립: ['자립'],
+  // 🔴 위기 / 긴급
+  자살위험: [
+    '자살', '죽고싶', '죽고 싶', '죽고싶다',
+    '극단선택', '극단 선택', '삶을 포기',
+    '사라지고싶', '사라지고 싶'
+  ],
+
+  자해위험: [
+    '자해', '자해시도', '자해 시도',
+    '손목긋', '손목 긋', '몸을 해침',
+    '자기몸을 해침', '자기 몸을 해침'
+  ],
+
+  // 🟠 폭력 / 학대
+  학교폭력: [
+    '학교폭력', '따돌림', '왕따', '괴롭힘',
+    '집단괴롭힘', '폭력 피해',
+    '친구들이 때림', '맞고', '폭행',
+    'bullying', '무시', '욕함', '욕먹'
+  ],
+
+  학대방임: [
+    '학대', '방임', '방치', '유기',
+    '맞고', '폭행', '보호받지 못',
+    '돌봄없', '돌봄 없음', '혼자 방치'
+  ],
+
+  성폭력: [
+    '성폭력', '성추행', '성희롱',
+    '성적 피해', '성적 학대'
+  ],
+
+  // 🟡 경제 / 생활
+  경제적어려움: [
+    '경제적어려움', '경제적으로어려움', '경제적으로 어려움',
+    '형편이어려움', '형편이 어려움',
+    '생활이어려움', '생활이 어려움',
+    '돈이없', '돈이 없', '돈없',
+    '가난', '생계곤란', '생활비 부족'
+  ],
+
+  결식: [
+    '결식', '밥을못', '밥을 못',
+    '굶', '끼니', '식사를못', '식사를 못'
+  ],
+
+  기초생활수급자: [
+    '기초생활수급자', '수급자',
+    '생계급여', '의료급여'
+  ],
+
+  법정차상위: ['차상위', '법정차상위'],
+
+  기타저소득: ['저소득'],
+
+  // 🟢 정서 / 정신
+  우울: [
+    '우울', '우울감', '의욕없', '의욕 없',
+    '무기력', '기운없', '기운 없',
+    '아무것도 하기 싫', '무기력함'
+  ],
+
+  불안: [
+    '불안', '초조', '긴장', '걱정',
+    '두려움', '겁', '불안정',
+
+    // 현실 표현
+    '놀림', '놀림받', '놀림 받',
+    '자신감없', '자신감 없',
+    '자존감낮', '자존감 낮',
+    '위축', '위축됨'
+  ],
+
+  분노폭력: [
+    '분노', '화를참지', '화를 참지',
+    '공격적', '난폭', '화가 많'
+  ],
+
+  무기력: [
+    '무기력', '기운없', '기운 없',
+    '의욕없', '의욕 없음'
+  ],
+
+  // 🔵 학업 / 학교
+  학업중단위기: [
+    '학교를그만', '학교를 그만',
+    '자퇴', '퇴학', '등교거부',
+    '학교안가', '학교 안 가'
+  ],
+
+  기초학습부족: [
+    '기초학습부족', '기초학습 부족',
+    '읽기어려움', '읽기 어려움',
+    '쓰기어려움', '쓰기 어려움',
+    '셈하기어려움', '기초가부족'
+  ],
+
+  교과부족: [
+    '학습부진', '성적저하',
+    '공부를못', '공부를 못',
+    '성적이 낮'
+  ],
+
+  ADHD: [
+    'adhd', '주의력결핍',
+    '과잉행동', '집중못', '집중 못',
+    '산만'
+  ],
+
+  학교밖청소년: [
+    '학교밖', '검정고시',
+    '학교밖청소년'
+  ],
+
+  // 🟣 가족 / 돌봄
+  가정급변: [
+    '이혼', '별거', '실직',
+    '보호자사망', '가정불화',
+    '집안문제', '가정위기'
+  ],
+
+  부모부재: [
+    '부모없', '부모 없',
+    '보호자없', '보호자 없음'
+  ],
+
+  가족돌봄청소년: [
+    '가족돌봄', '간병',
+    '부모를돌봄', '동생을 돌봄'
+  ],
+
+  양육환경위기: [
+    '양육어려움', '양육이안됨',
+    '돌봄공백'
+  ],
+
+  조부모가정: [
+    '조부모', '조손',
+    '할머니와', '할아버지와'
+  ],
+
+  친척돌봄: [
+    '친척이 돌봄',
+    '삼촌이 키움', '이모가 키움'
+  ],
+
+  한부모: [
+    '한부모', '편부모',
+    '편모', '편부'
+  ],
+
+  시설보호: [
+    '시설보호', '보호시설',
+    '쉼터', '그룹홈'
+  ],
+
+  // 🟤 사회 / 특성
+  다문화: [
+    '다문화', '외국인',
+    '이주배경', '국제결혼'
+  ],
+
+  장애: [
+    '장애', '장애인',
+    '발달장애', '지적장애',
+    '자폐'
+  ],
+
+  질병: [
+    '질병', '병이있', '병이 있',
+    '만성질환'
+  ],
+
+  비만: [
+    '비만', '과체중',
+    '체중증가', '체중 증가',
+    '살이쪘', '살이 쪘',
+    '뚱뚱', '체중이'
+  ],
+
+  북한이탈주민: [
+    '탈북', '북한이탈', '북한에서'
+  ],
+
+  난민: ['난민'],
+
+  기타: ['기타']
 };
+
+const TAG_PATTERN_MAP = {
+  자살위험: [
+    '사는게 의미가 없',
+    '살고싶지 않',
+    '그만 살고 싶',
+    '사라지고 싶',
+    '모든걸 끝내고 싶'
+  ],
+
+  우울: [
+    '아무것도 하기 싫',
+    '기운이 없',
+    '너무 힘들',
+    '지쳐',
+    '의욕이 없'
+  ],
+
+  불안: [
+    '계속 걱정',
+    '마음이 불안',
+    '긴장이 된다',
+    '무서워',
+    '겁난다'
+  ],
+
+  학교폭력: [
+    '친구들이 나를 무시',
+    '학교에서 힘들',
+    '친구 관계가 어렵',
+    '친구들이 괴롭힌다'
+  ],
+
+  경제적어려움: [
+    '생활이 어렵',
+    '돈이 부족',
+    '경제적으로 힘들',
+    '형편이 안 좋'
+  ]
+};
+
+const normalizeText = (text) => {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, '')      // 공백 제거
+    .replace(/[.,!?]/g, '');  // 특수문자 제거
+};
+
 
 function App() {
   const [programs, setPrograms] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [tags, setTags] = useState([]);
 
-  const [selectedTags, setSelectedTags] = useState([]);
+  const [autoSelectedTags, setAutoSelectedTags] = useState([]);
+  const [manualSelectedTags, setManualSelectedTags] = useState([]);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState('');
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [openProgramId, setOpenProgramId] = useState(null);
@@ -113,6 +357,8 @@ function App() {
   const [orgSearch, setOrgSearch] = useState('');
   const [adminOrgSearch, setAdminOrgSearch] = useState('');
   const [adminTagSearch, setAdminTagSearch] = useState('');
+  const [allProgramSearch, setAllProgramSearch] = useState('');
+  const [openTag, setOpenTag] = useState(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -147,6 +393,10 @@ function App() {
 
   const ADMIN_EMAIL = 'gsadmin@ai.cne.go.kr';
   const isAdmin = user?.email === ADMIN_EMAIL;
+
+  const selectedTags = useMemo(() => {
+    return [...new Set([...autoSelectedTags, ...manualSelectedTags])];
+  }, [autoSelectedTags, manualSelectedTags]);
 
   useEffect(() => {
     fetchPrograms();
@@ -214,32 +464,579 @@ function App() {
     return organizations.find((item) => item.id === organizationId) || null;
   };
 
-  const extractTagsFromText = (text) => {
-    const lower = text.toLowerCase();
-    const found = [];
-
-    Object.entries(TAG_KEYWORD_MAP).forEach(([tag, keywords]) => {
-      keywords.forEach((keyword) => {
-        if (lower.includes(keyword.toLowerCase())) {
-          found.push(tag);
-        }
-      });
-    });
-
-    return [...new Set(found)];
+  const normalizeCaseText = (text) => {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/\s+/g, '')
+      .replace(/[^가-힣a-z0-9]/g, '');
   };
 
-const handleLiveCaseInput = (value) => {
-  setSearchText(value);
+  const validTagNames = useMemo(() => {
+    return new Set((tags || []).map((tag) => tag.name));
+  }, [tags]);
 
-  if (!value.trim()) {
-    setSelectedTags([]);
-    return;
+const extractTagsFromText = (text) => {
+  const normalized = normalizeText(text);
+  const found = [];
+
+  // 🔹 키워드 매칭
+  Object.entries(TAG_KEYWORD_MAP).forEach(([tag, keywords]) => {
+    if (!validTagNames.has(tag)) return;
+
+    const matched = keywords.some((keyword) => {
+      const normalizedKeyword = normalizeText(keyword);
+      return normalized.includes(normalizedKeyword);
+    });
+
+    if (matched) found.push(tag);
+  });
+
+  // 🔥 패턴 매칭
+  Object.entries(TAG_PATTERN_MAP).forEach(([tag, patterns]) => {
+    if (!validTagNames.has(tag)) return;
+
+    const matched = patterns.some((pattern) => {
+      const normalizedPattern = normalizeText(pattern);
+      return normalized.includes(normalizedPattern);
+    });
+
+    if (matched && !found.includes(tag)) {
+      found.push(tag);
+    }
+  });
+
+ // 🔥🔥🔥 문맥 조합 룰
+if (
+  normalized.includes('살') &&
+  (
+    normalized.includes('놀림') ||
+    normalized.includes('따돌림') ||
+    normalized.includes('괴롭힘') ||
+    normalized.includes('왕따') ||
+    normalized.includes('무시')
+  )
+) {
+  found.push('비만');
+  found.push('학교폭력');
+}
+
+if (
+  normalized.includes('학교') &&
+  (
+    normalized.includes('무서') ||
+    normalized.includes('가기싫') ||
+    normalized.includes('가기싫어') ||
+    normalized.includes('가기두려') ||
+    normalized.includes('괴롭힘') ||
+    normalized.includes('따돌림')
+  )
+) {
+  found.push('학교폭력');
+}
+
+if (
+  normalized.includes('집') &&
+  (
+    normalized.includes('힘들') ||
+    normalized.includes('무섭') ||
+    normalized.includes('불안') ||
+    normalized.includes('싸움') ||
+    normalized.includes('혼자')
+  )
+) {
+  found.push('가정급변');
+}
+
+// 🔥🔥🔥 문맥 조합 룰 (실전용)
+
+// 🔴 자살 / 자해
+if (
+  normalized.includes('죽고싶') ||
+  normalized.includes('살기싫') ||
+  normalized.includes('끝내고싶') ||
+  normalized.includes('사라지고싶')
+) {
+  found.push('자살위험');
+}
+
+if (
+  normalized.includes('자해') ||
+  normalized.includes('손목') ||
+  normalized.includes('몸을해')
+) {
+  found.push('자해위험');
+}
+
+// 🟠 학교폭력 / 괴롭힘
+if (
+  normalized.includes('따돌림') ||
+  normalized.includes('왕따') ||
+  normalized.includes('괴롭힘') ||
+  normalized.includes('폭행') ||
+  normalized.includes('맞고')
+) {
+  found.push('학교폭력');
+}
+
+// 🟠 외모 + 괴롭힘
+if (
+  normalized.includes('살') &&
+  (
+    normalized.includes('놀림') ||
+    normalized.includes('따돌림') ||
+    normalized.includes('괴롭힘') ||
+    normalized.includes('왕따') ||
+    normalized.includes('무시')
+  )
+) {
+  found.push('비만');
+  found.push('학교폭력');
+}
+
+// 🟢 우울 / 정서
+if (
+  normalized.includes('힘들') ||
+  normalized.includes('지쳤') ||
+  normalized.includes('의욕없') ||
+  normalized.includes('무기력')
+) {
+  found.push('우울');
+}
+
+if (
+  normalized.includes('불안') ||
+  normalized.includes('걱정') ||
+  normalized.includes('무서') ||
+  normalized.includes('두려')
+) {
+  found.push('불안');
+}
+
+// 🔵 학교 / 등교 문제
+if (
+  normalized.includes('학교') &&
+  (
+    normalized.includes('가기싫') ||
+    normalized.includes('가기싫어') ||
+    normalized.includes('가기두려') ||
+    normalized.includes('무서')
+  )
+) {
+  found.push('학교폭력');
+  found.push('학업중단위기');
+}
+
+// 🟣 가정 문제
+if (
+  normalized.includes('집') &&
+  (
+    normalized.includes('힘들') ||
+    normalized.includes('무섭') ||
+    normalized.includes('싸움') ||
+    normalized.includes('불안') ||
+    normalized.includes('혼자')
+  )
+) {
+  found.push('가정급변');
+}
+
+// 🟡 경제 문제
+if (
+  normalized.includes('돈') &&
+  (
+    normalized.includes('없') ||
+    normalized.includes('부족') ||
+    normalized.includes('힘들')
+  )
+) {
+  found.push('경제적어려움');
+}
+
+// 🟣 부모 부재
+if (
+  normalized.includes('혼자') &&
+  (
+    normalized.includes('집') ||
+    normalized.includes('지냄')
+  )
+) {
+  found.push('부모부재');
+}
+
+// 🟤 다문화
+if (
+  normalized.includes('한국어') &&
+  normalized.includes('어려')
+) {
+  found.push('다문화');
+}
+
+// 🟤 장애 + 학습
+if (
+  normalized.includes('장애') &&
+  (
+    normalized.includes('공부') ||
+    normalized.includes('학교')
+  )
+) {
+  found.push('장애');
+  found.push('기초학습부족');
+}
+
+  // 🔥🔥🔥 문맥 조합 룰 (추가)
+
+  // 다문화 + 학교 적응
+  if (
+    normalized.includes('다문화') &&
+    (
+      normalized.includes('학교') ||
+      normalized.includes('적응') ||
+      normalized.includes('어려움') ||
+      normalized.includes('힘들')
+    )
+  ) {
+    found.push('다문화');
+    found.push('기초학습부족');
+    found.push('우울');
   }
 
-  const extracted = extractTagsFromText(value);
-  setSelectedTags(extracted);
+  if (
+    normalized.includes('한국어') &&
+    (
+      normalized.includes('못') ||
+      normalized.includes('어려') ||
+      normalized.includes('힘들')
+    )
+  ) {
+    found.push('다문화');
+    found.push('기초학습부족');
+  }
+
+  // 친구 관계 문제
+  if (
+    normalized.includes('친구') &&
+    (
+      normalized.includes('힘들') ||
+      normalized.includes('어려') ||
+      normalized.includes('문제')
+    )
+  ) {
+    found.push('우울');
+  }
+
+  if (
+    normalized.includes('친구') &&
+    (
+      normalized.includes('무시') ||
+      normalized.includes('괴롭힘') ||
+      normalized.includes('따돌림')
+    )
+  ) {
+    found.push('학교폭력');
+  }
+
+  // 자존감 / 외모 / 위축
+  if (
+    normalized.includes('자신감') ||
+    normalized.includes('자존감')
+  ) {
+    found.push('불안');
+    found.push('우울');
+  }
+
+  if (
+    normalized.includes('위축') ||
+    normalized.includes('눈치')
+  ) {
+    found.push('불안');
+  }
+
+  // 가정 문제 확장
+  if (
+    normalized.includes('부모') &&
+    (
+      normalized.includes('싸움') ||
+      normalized.includes('갈등')
+    )
+  ) {
+    found.push('가정급변');
+    found.push('우울');
+  }
+
+  if (
+    normalized.includes('집') &&
+    normalized.includes('가기싫')
+  ) {
+    found.push('가정급변');
+  }
+
+  // 공부 / 학습 문제
+  if (
+    normalized.includes('공부') &&
+    (
+      normalized.includes('힘들') ||
+      normalized.includes('못') ||
+      normalized.includes('어려')
+    )
+  ) {
+    found.push('교과부족');
+  }
+
+  if (
+    normalized.includes('학교') &&
+    normalized.includes('싫')
+  ) {
+    found.push('학업중단위기');
+  }
+
+  // 경제 + 생활
+  if (
+    normalized.includes('돈') &&
+    normalized.includes('없')
+  ) {
+    found.push('경제적어려움');
+  }
+
+  if (
+    normalized.includes('밥') &&
+    normalized.includes('못')
+  ) {
+    found.push('결식');
+  }
+
+  // 고립 / 혼자
+  if (
+    normalized.includes('혼자') &&
+    normalized.includes('외로')
+  ) {
+    found.push('우울');
+  }
+
+  if (
+    normalized.includes('혼자') &&
+    normalized.includes('지냄')
+  ) {
+    found.push('부모부재');
+  }
+
+  // 외모 + 따돌림
+  if (
+    normalized.includes('살') &&
+    (
+      normalized.includes('놀림') ||
+      normalized.includes('따돌림') ||
+      normalized.includes('괴롭힘') ||
+      normalized.includes('왕따') ||
+      normalized.includes('무시')
+    )
+  ) {
+    found.push('비만');
+    found.push('학교폭력');
+  }
+
+  // 학교 + 무서움
+  if (
+    normalized.includes('학교') &&
+    (
+      normalized.includes('무서') ||
+      normalized.includes('가기싫') ||
+      normalized.includes('가기두려') ||
+      normalized.includes('괴롭힘') ||
+      normalized.includes('따돌림')
+    )
+  ) {
+    found.push('학교폭력');
+    found.push('학업중단위기');
+  }
+
+  // 집 + 힘듦
+  if (
+    normalized.includes('집') &&
+    (
+      normalized.includes('힘들') ||
+      normalized.includes('무섭') ||
+      normalized.includes('불안') ||
+      normalized.includes('싸움') ||
+      normalized.includes('혼자')
+    )
+  ) {
+    found.push('가정급변');
+  }
+
+  // 🔥🔥🔥 실제 테스트 기반 보강 룰
+
+// 학교폭력 + 학교 회피 → 학업중단위기
+if (
+  found.includes('학교폭력') &&
+  (
+    normalized.includes('학교가기싫') ||
+    normalized.includes('학교가기무섭') ||
+    normalized.includes('결석') ||
+    normalized.includes('등교거부')
+  )
+) {
+  found.push('학업중단위기');
+}
+
+// 폭행은 학교폭력이지 학대방임 아님 → 제거
+if (
+  found.includes('학대방임') &&
+  (
+    normalized.includes('학교') ||
+    normalized.includes('친구')
+  )
+) {
+  const idx = found.indexOf('학대방임');
+  if (idx !== -1) found.splice(idx, 1);
+}
+
+// 놀림 + 위축 → 불안 + 학교폭력
+if (
+  normalized.includes('놀림') &&
+  normalized.includes('위축')
+) {
+  found.push('학교폭력');
+  found.push('불안');
+}
+
+// 우울 → 무기력 자동 추가
+if (found.includes('우울')) {
+  found.push('무기력');
+}
+
+// 경제 관련 강화
+if (
+  normalized.includes('형편') ||
+  normalized.includes('생활비') ||
+  normalized.includes('생계') ||
+  normalized.includes('경제')
+) {
+  found.push('경제적어려움');
+}
+
+// 저소득 → 경제적어려움도 같이
+if (found.includes('기타저소득')) {
+  found.push('경제적어려움');
+}
+
+// 다문화 + 언어 문제
+if (
+  normalized.includes('한국어') &&
+  (
+    normalized.includes('어려') ||
+    normalized.includes('못') ||
+    normalized.includes('힘들')
+  )
+) {
+  found.push('다문화');
+  found.push('기초학습부족');
+}
+
+// 다문화 + 학교 적응
+if (
+  normalized.includes('다문화') &&
+  normalized.includes('학교')
+) {
+  found.push('기초학습부족');
+}
+
+// 기초학습 직접 표현
+if (
+  normalized.includes('읽기') ||
+  normalized.includes('쓰기') ||
+  normalized.includes('기초학습')
+) {
+  found.push('기초학습부족');
+}
+
+// 성적 저하 → 교과부족
+if (
+  normalized.includes('성적') &&
+  normalized.includes('떨어')
+) {
+  found.push('교과부족');
+}
+
+// 학교 가기 싫음 → 학업중단위기
+if (
+  normalized.includes('학교가기싫') ||
+  normalized.includes('결석') ||
+  normalized.includes('등교거부')
+) {
+  found.push('학업중단위기');
+}
+
+// 충동성 / 행동문제
+if (
+  normalized.includes('충동') ||
+  normalized.includes('가만히있지못') ||
+  normalized.includes('행동문제')
+) {
+  found.push('ADHD');
+}
+
+// 외모 + 놀림
+if (
+  normalized.includes('외모') &&
+  normalized.includes('놀림')
+) {
+  found.push('학교폭력');
+  found.push('불안');
+}
+
+// 가족돌봄
+if (
+  normalized.includes('동생돌봄') ||
+  normalized.includes('가족돌봄') ||
+  normalized.includes('간병')
+) {
+  found.push('가족돌봄청소년');
+}
+
+// 돌봄 + 학업 어려움
+if (
+  found.includes('가족돌봄청소년') &&
+  (
+    normalized.includes('학교') ||
+    normalized.includes('학업')
+  )
+) {
+  found.push('학업중단위기');
+}
+
+// 부모 부재
+if (
+  normalized.includes('부모부재') ||
+  normalized.includes('혼자지냄')
+) {
+  found.push('부모부재');
+}
+
+// 경제 + 불안 같이 표현
+if (
+  found.includes('경제적어려움') &&
+  normalized.includes('힘들')
+) {
+  found.push('우울');
+}
+
+  // 🔥 중복 제거
+  return [...new Set(found)];
 };
+
+  const handleLiveCaseInput = (value) => {
+    setSearchText(value);
+
+    if (!value.trim()) {
+      setAutoSelectedTags([]);
+      setManualSelectedTags([]);
+      return;
+    }
+
+    const extracted = extractTagsFromText(value);
+    setAutoSelectedTags(extracted);
+    setManualSelectedTags([]);
+  };
 
   const activeTags = useMemo(
     () => tags.filter((tag) => tag.is_active),
@@ -326,66 +1123,172 @@ const handleLiveCaseInput = (value) => {
     return true;
   }, [age, gender, schoolLevel]);
 
-  const calculateRecommendationScore = useCallback((program) => {
-    const programTags = program.tags || [];
+const calculateRecommendationScore = useCallback((program) => {
+  const programTags = Array.isArray(program.tags) ? program.tags : [];
 
-    if (selectedTags.length === 0) {
-      return {
-        ...program,
-        matchCount: 0,
-        matchRatio: 0,
-        score: 0,
-        matchedTags: [],
-      };
-    }
-
-    let score = 0;
-    const matchedTags = [];
-
-    for (const tag of selectedTags) {
-      if (programTags.includes(tag)) {
-        const weight = TAG_WEIGHTS[tag] || 20;
-        score += weight;
-        matchedTags.push(tag);
-      }
-    }
-
-    const matchCount = matchedTags.length;
-    const matchRatio =
-      selectedTags.length > 0 ? matchCount / selectedTags.length : 0;
-
-    score += matchCount * 10;
-
+  if (selectedTags.length === 0) {
     return {
       ...program,
-      matchCount,
-      matchRatio,
-      score,
-      matchedTags,
+      score: 0,
+      matchedTags: [],
+      matchCount: 0,
+      matchRatio: 0,
+      hasCriticalMatch: false,
+      criticalMatchCount: 0,
     };
-  }, [selectedTags]);
+  }
 
-  const recommendedPrograms = useMemo(() => {
-    return programs
-      .filter((program) => passesRequiredFilters(program))
-      .map((program) => calculateRecommendationScore(program))
-      .filter((program) => program.score > 0)
-      .sort((a, b) => {
-        const aCritical = a.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
-        const bCritical = b.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
+  let score = 0;
+  const matchedTags = [];
 
-        if (aCritical && !bCritical) return -1;
-        if (!aCritical && bCritical) return 1;
-        if (b.score !== a.score) return b.score - a.score;
-        return a.name.localeCompare(b.name);
-      });
-  }, [programs, passesRequiredFilters, calculateRecommendationScore]);
+  for (const tag of selectedTags) {
+    if (programTags.includes(tag)) {
+      let weight = TAG_WEIGHTS[tag] || 20;
 
-  const allPrograms = useMemo(() => {
-    return programs
-      .filter((program) => passesRequiredFilters(program))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [programs, passesRequiredFilters]);
+      // 조건 태그는 점수 약화
+      if (CONTEXT_TAGS.includes(tag)) {
+        weight = weight * 0.4;
+      }
+
+      score += weight;
+      matchedTags.push(tag);
+    }
+  }
+
+  const matchCount = matchedTags.length;
+  const matchRatio = matchCount / selectedTags.length;
+
+  const selectedCoreTags = selectedTags.filter((tag) =>
+    CORE_PROBLEM_TAGS.includes(tag)
+  );
+
+  const matchedCoreTags = matchedTags.filter((tag) =>
+    CORE_PROBLEM_TAGS.includes(tag)
+  );
+
+  const criticalMatchCount = matchedTags.filter((tag) =>
+    CRITICAL_TAGS.includes(tag)
+  ).length;
+
+  const hasCriticalMatch = criticalMatchCount > 0;
+
+  // 핵심 태그 맞으면 보너스
+  if (matchedCoreTags.length > 0) {
+    score += matchedCoreTags.length * 40;
+  }
+
+  // 핵심 태그 있는데 하나도 못 맞추면 약하게 감점
+  if (selectedCoreTags.length > 0 && matchedCoreTags.length === 0) {
+    score -= 40;
+  }
+
+  return {
+    ...program,
+    score,
+    matchedTags,
+    matchCount,
+    matchRatio,
+    hasCriticalMatch,
+    criticalMatchCount,
+  };
+}, [selectedTags]);
+
+const recommendedPrograms = useMemo(() => {
+  return programs
+    .filter((program) => passesRequiredFilters(program))
+    .map((program) => calculateRecommendationScore(program))
+    .filter((program) => {
+      if (selectedTags.length === 0) return false;
+
+      if (program.hasCriticalMatch) return true;
+
+      const hasCore = selectedTags.some((tag) =>
+        CORE_PROBLEM_TAGS.includes(tag)
+      );
+
+      const matchedCoreTags = (program.matchedTags || []).filter((tag) =>
+        CORE_PROBLEM_TAGS.includes(tag)
+      );
+
+      // 핵심 태그 하나라도 맞으면 통과
+      if (matchedCoreTags.length > 0) return true;
+
+      // 핵심 문제 입력이면 약간 엄격
+      if (hasCore) {
+        return program.matchCount >= 1 && program.matchRatio >= 0.3;
+      }
+
+      // 조건만 있는 경우 넓게 추천
+      return program.matchCount >= 1;
+    })
+    .sort((a, b) => {
+      if (a.hasCriticalMatch && !b.hasCriticalMatch) return -1;
+      if (!a.hasCriticalMatch && b.hasCriticalMatch) return 1;
+
+      if (b.criticalMatchCount !== a.criticalMatchCount) {
+        return b.criticalMatchCount - a.criticalMatchCount;
+      }
+
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+      if (b.matchRatio !== a.matchRatio) return b.matchRatio - a.matchRatio;
+
+      return a.name.localeCompare(b.name);
+    });
+}, [programs, passesRequiredFilters, calculateRecommendationScore, selectedTags]);
+ 
+const groupedPrograms = useMemo(() => {
+  const result = {};
+
+  recommendedPrograms.forEach((program) => {
+    const tags = program.matchedTags || [];
+
+    tags.forEach((tag) => {
+      if (!result[tag]) result[tag] = {};
+
+      const orgName = getOrganizationName(
+        program.organization_id,
+        program.organization
+      );
+
+      if (!result[tag][orgName]) result[tag][orgName] = [];
+
+      result[tag][orgName].push(program);
+    });
+  });
+
+  return result;
+}, [recommendedPrograms, organizations]);
+
+const allPrograms = useMemo(() => {
+  const keyword = allProgramSearch.trim().toLowerCase();
+
+  return programs
+    .filter((program) => passesRequiredFilters(program))
+    .filter((program) => {
+      if (!keyword) return true;
+
+      const name = (program.name || '').toLowerCase();
+      const description = (program.description || '').toLowerCase();
+      const organization = getOrganizationName(
+        program.organization_id,
+        program.organization
+      ).toLowerCase();
+      const phone = (program.phone || '').toLowerCase();
+      const tagsText = Array.isArray(program.tags)
+        ? program.tags.join(' ').toLowerCase()
+        : '';
+
+      return (
+        name.includes(keyword) ||
+        description.includes(keyword) ||
+        organization.includes(keyword) ||
+        phone.includes(keyword) ||
+        tagsText.includes(keyword)
+      );
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}, [programs, passesRequiredFilters, allProgramSearch, organizations]);
 
   const organizationPrograms = useMemo(() => {
     if (!selectedOrganizationId) return [];
@@ -431,11 +1334,31 @@ const handleLiveCaseInput = (value) => {
   }, [organizations, adminOrgSearch]);
 
   const autoTagging = (text) => {
-    if (!text) return;
+    if (!text.trim()) {
+      setAutoSelectedTags([]);
+      setManualSelectedTags([]);
+      return;
+    }
 
     const extracted = extractTagsFromText(text);
-    setSelectedTags(extracted);
-    setSearchText('');
+    setAutoSelectedTags(extracted);
+    setManualSelectedTags([]);
+  };
+
+  const removeTagCompletely = (tagName) => {
+    setAutoSelectedTags((prev) => prev.filter((t) => t !== tagName));
+    setManualSelectedTags((prev) => prev.filter((t) => t !== tagName));
+  };
+
+  const toggleManualTag = (tagName) => {
+    const isSelected = selectedTags.includes(tagName);
+
+    if (isSelected) {
+      removeTagCompletely(tagName);
+      return;
+    }
+
+    setManualSelectedTags((prev) => [...new Set([...prev, tagName])]);
   };
 
   const handleResetRecommendFilters = () => {
@@ -443,7 +1366,8 @@ const handleLiveCaseInput = (value) => {
     setGender('');
     setSchoolLevel('');
     setSearchText('');
-    setSelectedTags([]);
+    setAutoSelectedTags([]);
+    setManualSelectedTags([]);
   };
 
   const handleLogin = async () => {
@@ -477,7 +1401,8 @@ const handleLiveCaseInput = (value) => {
     }
 
     setUser(null);
-    setSelectedTags([]);
+    setAutoSelectedTags([]);
+    setManualSelectedTags([]);
     setSelectedProgram(null);
     setSelectedOrganizationId('');
     setViewMode('recommend');
@@ -497,6 +1422,7 @@ const handleLiveCaseInput = (value) => {
     setOrgSearch('');
     setAdminOrgSearch('');
     setAdminTagSearch('');
+    setAllProgramSearch('');
 
     setForm({
       name: '',
@@ -1334,6 +2260,11 @@ const handleLiveCaseInput = (value) => {
               일치 태그: {p.matchedTags.join(', ')}
             </p>
           )}
+          {showScore && p.hasCriticalMatch && (
+            <p className="program-match" style={{ color: '#dc2626', fontWeight: 700 }}>
+              긴급 태그 일치: {p.matchedTags.filter((tag) => CRITICAL_TAGS.includes(tag)).join(', ')}
+            </p>
+          )}
         </div>
 
         {isOpen && (
@@ -1521,9 +2452,72 @@ const handleLiveCaseInput = (value) => {
               </div>
             ) : (
               <div className="cards scroll-box recommend-scroll">
-  {recommendedPrograms.map((p, index) =>
-    renderProgramCard(p, index, true)
-  )}
+
+  {Object.entries(groupedPrograms).map(([tag, orgs]) => {
+  const totalCount = Object.values(orgs).flat().length;
+  const isOpen = openTag === tag;
+  const isHighRisk = HIGH_RISK_TAGS.includes(tag);
+  const isMediumRisk = MEDIUM_RISK_TAGS.includes(tag);
+
+  return (
+    <div key={tag} className="tag-section">
+      <button
+        type="button"
+        className={`tag-header ${isHighRisk ? 'high-risk' : ''} ${isMediumRisk ? 'medium-risk' : ''}`}
+        onClick={() => setOpenTag((prev) => (prev === tag ? null : tag))}
+      >
+        <span className="tag-title">
+          {isHighRisk && '🚨 '}
+          {isMediumRisk && '⚠️ '}
+          #{tag} 관련 지원 ({totalCount})
+        </span>
+
+        <span className="tag-toggle">
+          {isOpen ? '▲' : '▼'}
+        </span>
+      </button>
+
+      {isOpen && (
+        <div className="tag-section-scroll">
+          {Object.entries(orgs).map(([orgName, programs]) => (
+            <div key={orgName} className="org-group">
+              <h4 className="org-title">
+                {orgName} ({programs.length})
+              </h4>
+
+              <div className="program-list">
+                {programs.map((p) => (
+                  <div key={p.id} className="program-simple">
+                    <button
+                      type="button"
+                      className="program-simple-title"
+                      onClick={() =>
+                        setOpenProgramId((prev) => (prev === p.id ? null : p.id))
+                      }
+                    >
+                      {p.name}
+                    </button>
+
+                    {openProgramId === p.id && (
+                      <div className="program-detail-box">
+                        <p>{p.description || '설명 없음'}</p>
+                        <p>📞 {p.phone || '연락처 없음'}</p>
+                        <p>👤 {p.min_age ?? '무관'} ~ {p.max_age ?? '무관'}</p>
+                        <p>🏫 {p.school_level || '무관'}</p>
+                        <p>🏷 {p.tags?.join(', ') || '없음'}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+})}
+
 </div>
             )}
 
@@ -1568,20 +2562,20 @@ const handleLiveCaseInput = (value) => {
 
               <div className="search-row">
                 <input
-  className="field full"
-  placeholder="상황을 자유롭게 입력하세요 (예: 우울, 가정문제, 경제적으로 어려움)"
-  value={searchText}
-  onChange={(e) => handleLiveCaseInput(e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === 'Enter') {
-      setTimeout(() => {
-        resultRef.current?.scrollIntoView({
-          behavior: 'smooth',
-        });
-      }, 100);
-    }
-  }}
-/>
+                  className="field full"
+                  placeholder="상황을 자유롭게 입력하세요 (예: 우울, 가정문제, 경제적으로 어려움)"
+                  value={searchText}
+                  onChange={(e) => handleLiveCaseInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setTimeout(() => {
+                        resultRef.current?.scrollIntoView({
+                          behavior: 'smooth',
+                        });
+                      }, 100);
+                    }
+                  }}
+                />
 
                 <button
                   className="btn btn-primary"
@@ -1625,11 +2619,7 @@ const handleLiveCaseInput = (value) => {
                         {tag}
                         <button
                           className="chip-remove"
-                          onClick={() =>
-                            setSelectedTags((prev) =>
-                              prev.filter((t) => t !== tag)
-                            )
-                          }
+                          onClick={() => removeTagCompletely(tag)}
                         >
                           ×
                         </button>
@@ -1649,13 +2639,7 @@ const handleLiveCaseInput = (value) => {
                             <input
                               type="checkbox"
                               checked={selectedTags.includes(tag.name)}
-                              onChange={() => {
-                                setSelectedTags((prev) =>
-                                  prev.includes(tag.name)
-                                    ? prev.filter((t) => t !== tag.name)
-                                    : [...prev, tag.name]
-                                );
-                              }}
+                              onChange={() => toggleManualTag(tag.name)}
                             />
                             <span>{tag.name}</span>
                           </label>
@@ -1682,6 +2666,15 @@ const handleLiveCaseInput = (value) => {
               </div>
               <div className="result-count">{allPrograms.length}개 결과</div>
             </section>
+
+            <div style={{ marginBottom: 16 }}>
+  <input
+    className="field full"
+    placeholder="사업명, 기관명, 설명, 태그로 검색"
+    value={allProgramSearch}
+    onChange={(e) => setAllProgramSearch(e.target.value)}
+  />
+</div>
 
             {isAdmin && allPrograms.length > 0 && (
               <section className="panel" style={{ marginBottom: 16 }}>
@@ -1718,8 +2711,8 @@ const handleLiveCaseInput = (value) => {
               </div>
             ) : (
               <div className="cards scroll-box recommend-scroll">
-  {allPrograms.map((p) => renderProgramCard(p))}
-</div>
+                {allPrograms.map((p) => renderProgramCard(p))}
+              </div>
             )}
           </>
         )}
@@ -1816,8 +2809,8 @@ const handleLiveCaseInput = (value) => {
                   </div>
                 ) : (
                   <div className="cards scroll-box recommend-scroll">
-  {organizationPrograms.map((p) => renderProgramCard(p))}
-</div>
+                    {organizationPrograms.map((p) => renderProgramCard(p))}
+                  </div>
                 )}
               </>
             )}
