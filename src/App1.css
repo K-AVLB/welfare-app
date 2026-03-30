@@ -909,3 +909,11 @@ a {
 .medium-risk:hover {
   background: #fdba74;
 }
+
+.test-pass {
+  border-left: 6px solid #16a34a;
+}
+
+.test-fail {
+  border-left: 6px solid #dc2626;
+}
