@@ -143,48 +143,7 @@ const CONTEXT_TAGS = [
 
 const CRITICAL_TAGS = ['자해위험', '학대방임', '학교폭력', '자살위험', '성폭력'];
 
-const TAG_WEIGHTS = {
-  자살위험: 110,
-  자해위험: 105,
-  학교폭력: 95,
-  학대방임: 100,
-  성폭력: 100,
 
-  우울: 70,
-  불안: 65,
-  분노폭력: 80,
-  무기력: 60,
-
-  학업중단위기: 85,
-  기초학습부족: 60,
-  교과부족: 50,
-  ADHD: 55,
-
-  경제적어려움: 45,
-  결식: 65,
-  기초생활수급자: 40,
-  법정차상위: 35,
-  기타저소득: 30,
-
-  가정급변: 85,
-  부모부재: 80,
-  가족돌봄청소년: 90,
-  양육환경위기: 75,
-  조부모가정: 50,
-  친척돌봄: 50,
-  한부모: 55,
-  시설보호: 85,
-
-  다문화: 50,
-  장애: 65,
-  질병: 55,
-  비만: 40,
-
-  북한이탈주민: 60,
-  난민: 60,
-
-  기타: 10
-};
 
 const HIGH_RISK_TAGS = ['자살위험', '자해위험'];
 
@@ -680,36 +639,7 @@ const extractTagsFromText = (text) => {
     found.push(tag);
   };
 
-const saveCaseLog = async ({
-  searchText,
-  autoTags,
-  finalTags,
-  age,
-  gender,
-  schoolLevel,
-}) => {
-  try {
-    const { error } = await supabase.from('case_logs').insert([
-      {
-        input_text: searchText,
-        auto_tags: autoTags,
-        final_tags: finalTags,
-        min_age: age === '' ? null : Number(age),
-        max_age: age === '' ? null : Number(age),
-        gender: gender || null,
-        school_level: schoolLevel || null,
-      },
-    ]);
 
-    if (error) {
-      console.error('❌ 사례 저장 실패:', error);
-    } else {
-      console.log('✅ 사례 저장 완료');
-    }
-  } catch (err) {
-    console.error('❌ 저장 중 오류:', err);
-  }
-};
   
   const hasTag = (tag) => found.includes(tag);
 
