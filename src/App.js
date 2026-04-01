@@ -2324,6 +2324,55 @@ return;
     setProgramUploadPreview([]);
     fetchPrograms();
   };
+  const handleExportSelectedPrograms = () => {
+  if (selectedProgramIds.length === 0) {
+    alert('선택된 사업이 없습니다.');
+    return;
+  }
+
+  const selectedPrograms = recommendedPrograms.filter((program) =>
+    selectedProgramIds.includes(program.id)
+  );
+
+  if (selectedPrograms.length === 0) {
+    alert('선택된 추천 사업 데이터를 찾을 수 없습니다.');
+    return;
+  }
+
+  const exportRows = selectedPrograms.map((program, index) => ({
+    순번: index + 1,
+    사업명: program.name || '',
+    기관명: getOrganizationName(program.organization_id, program.organization),
+    전화번호: program.phone || '',
+    설명: program.description || '',
+    일치태그: Array.isArray(program.matchedTags)
+      ? program.matchedTags.join(', ')
+      : '',
+    추천이유: Array.isArray(program.reasons)
+      ? program.reasons.join(', ')
+      : '',
+    추천점수: program.score ?? '',
+    전체태그: Array.isArray(program.tags)
+      ? program.tags.join(', ')
+      : '',
+    최소연령:
+      program.min_age === null || program.min_age === undefined
+        ? ''
+        : program.min_age,
+    최대연령:
+      program.max_age === null || program.max_age === undefined
+        ? ''
+        : program.max_age,
+    성별: program.gender || '무관',
+    학령: program.school_level || '무관',
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportRows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, '추천사업');
+
+  XLSX.writeFile(workbook, '추천사업_선택목록.xlsx');
+};
 
   const handleExportOrganizations = () => {
     if (organizations.length === 0) {
@@ -2351,6 +2400,9 @@ return;
       alert('내보낼 사업 데이터가 없습니다.');
       return;
     }
+
+
+
 
     const exportRows = programs.map((program, index) => ({
       순번: index + 1,
@@ -2666,34 +2718,43 @@ return;
               </div>
             </section>
 
-            {isAdmin && recommendedPrograms.length > 0 && (
-              <section className="panel" style={{ marginBottom: 16 }}>
-                <div className="action-row">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() =>
-                      setSelectedProgramIds(recommendedPrograms.map((p) => p.id))
-                    }
-                  >
-                    추천 목록 전체 선택
-                  </button>
+            {recommendedPrograms.length > 0 && (
+  <section className="panel" style={{ marginBottom: 16 }}>
+    <div className="action-row">
+      <button
+        className="btn btn-secondary"
+        onClick={() =>
+          setSelectedProgramIds(recommendedPrograms.map((p) => p.id))
+        }
+      >
+        추천 목록 전체 선택
+      </button>
 
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setSelectedProgramIds([])}
-                  >
-                    선택 해제
-                  </button>
+      <button
+        className="btn btn-secondary"
+        onClick={() => setSelectedProgramIds([])}
+      >
+        선택 해제
+      </button>
 
-                  <button
-                    className="btn btn-danger"
-                    onClick={handleDeleteSelectedPrograms}
-                  >
-                    선택 삭제 ({selectedProgramIds.length})
-                  </button>
-                </div>
-              </section>
-            )}
+      <button
+        className="btn btn-secondary"
+        onClick={handleExportSelectedPrograms}
+      >
+        선택 엑셀 다운로드 ({selectedProgramIds.length})
+      </button>
+
+      {isAdmin && (
+        <button
+          className="btn btn-danger"
+          onClick={handleDeleteSelectedPrograms}
+        >
+          선택 삭제 ({selectedProgramIds.length})
+        </button>
+      )}
+    </div>
+  </section>
+)}
 
             {recommendedPrograms.length === 0 ? (
               <div className="empty-state">
@@ -2737,37 +2798,65 @@ return;
 
               <div className="program-list">
                 {programs.map((p) => (
-                  <div key={p.id} className="program-simple">
-                    <button
-                      type="button"
-                      className="program-simple-title"
-                      onClick={() =>
-                        setOpenProgramId((prev) => (prev === p.id ? null : p.id))
-                      }
-                    >
-                      {p.name}
-                    </button>
+  <div key={p.id} className="program-simple">
+   
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 6,
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={selectedProgramIds.includes(p.id)}
+        onChange={() => {
+          setSelectedProgramIds((prev) =>
+            prev.includes(p.id)
+              ? prev.filter((id) => id !== p.id)
+              : [...prev, p.id]
+          );
+        }}
+        onClick={(e) => e.stopPropagation()}
+      />
 
-                    {openProgramId === p.id && (
-  <div className="program-detail-box">
-    <p>{p.description || '설명 없음'}</p>
+      <button
+        type="button"
+        className="program-simple-title"
+        onClick={() =>
+          setOpenProgramId((prev) => (prev === p.id ? null : p.id))
+        }
+        style={{ flex: 1, textAlign: 'left' }}
+      >
+        {p.name}
+      </button>
+    </div>
 
-    {p.matchedTags && p.matchedTags.length > 0 && (
-      <p>✅ 일치 태그: {p.matchedTags.join(', ')}</p>
+    {openProgramId === p.id && (
+      <div className="program-detail-box">
+        <h3>{p.description || '설명 없음'}</h3>
+
+        <p>✔ 일치 태그: {p.matchedTags.join(', ')}</p>
+<p>💡 추천 사유: {p.reasons.join(', ')}</p>
+
+       <p>
+  📞 전화:{' '}
+  {p.phone ? (
+    <a href={`tel:${p.phone}`} style={{ color: '#2563eb', fontWeight: 600 }}>
+      {p.phone}
+    </a>
+  ) : (
+    '연락처 없음'
+  )}
+</p>
+<p><strong>지원연령:</strong> {p.min_age ?? '무관'} ~ {p.max_age ?? '무관'}세</p>
+<p><strong>학령:</strong> {p.school_level || '무관'}</p>
+<p><strong>전체 태그:</strong> {p.tags?.join(', ') || '없음'}</p>
+</div>
     )}
-
-    {p.reasons && p.reasons.length > 0 && (
-      <p>💡 추천 이유: {p.reasons.join(', ')}</p>
-    )}
-
-    <p>📞 {p.phone || '연락처 없음'}</p>
-    <p>👤 {p.min_age ?? '무관'} ~ {p.max_age ?? '무관'}</p>
-    <p>🏫 {p.school_level || '무관'}</p>
-    <p>🏷 전체 태그: {p.tags?.join(', ') || '없음'}</p>
   </div>
-)}
-                  </div>
-                ))}
+))}
               </div>
             </div>
           ))}

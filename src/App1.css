@@ -917,3 +917,143 @@ a {
 .test-fail {
   border-left: 6px solid #dc2626;
 }
+
+/* ===== 전체 태그 영역 ===== */
+.tag-section {
+  margin-bottom: 20px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 18px;
+}
+
+/* ===== 태그 헤더 ===== */
+.tag-header {
+  width: 100%;
+  border: none;
+  border-radius: 16px;
+  padding: 18px 22px;
+  font-size: 22px;
+  font-weight: 800;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+
+  background: #dbeafe;
+  color: #1e3a8a;
+  transition: 0.2s;
+}
+
+.tag-header:hover {
+  transform: translateY(-1px);
+}
+
+/* 위험 태그 */
+.tag-header.high-risk {
+  background: #dc2626;
+  color: white;
+}
+
+/* 중간 위험 */
+.tag-header.medium-risk {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.tag-title {
+  font-weight: 800;
+}
+
+.tag-toggle {
+  font-size: 20px;
+}
+
+/* ===== 태그 내부 스크롤 ===== */
+.tag-section-scroll {
+  margin-top: 16px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+/* ===== 기관 블록 ===== */
+.org-group {
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #eef2f7;
+  border: 1px solid #d6dde8;
+}
+
+/* 기관 제목 */
+.org-title {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2937;
+  padding-left: 10px;
+  border-left: 5px solid #64748b;
+}
+
+/* ===== 사업 리스트 ===== */
+.program-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ===== 사업 카드 ===== */
+.program-simple {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  transition: 0.2s;
+}
+
+/* hover 효과 */
+.program-simple:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.08);
+}
+
+/* 사업 제목 */
+.program-simple-title {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  cursor: pointer;
+}
+
+.program-simple-title:hover {
+  color: #2563eb;
+}
+
+/* ===== 상세 영역 ===== */
+.program-detail-box {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* 추천 이유 강조 */
+.program-detail-box p {
+  margin: 4px 0;
+}
+
+/* 체크박스 라인 */
+.program-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
