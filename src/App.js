@@ -3624,7 +3624,7 @@ return;
             </div>
           </section>
         )}
-        <div>© 2026 [금산교육지원청 학생맞춤통합지원센터]. All rights reserved.<br></br>idea: main:min add: SaRa선생 등</div> 
+        <div>© 2026 [금산교육지원청 학생맞춤통합지원센터]. All rights reserved.<br></br><p className="stu" >idea: main:min add: SaRa </p></div> 
       </main>
       
     </div>
