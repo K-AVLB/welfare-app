@@ -19,6 +19,7 @@ import {
   TEST_CASES,
 } from './constants/appData';
 import AdminSection from './components/sections/AdminSection';
+import AdminLoginModal from './components/AdminLoginModal';
 import AllProgramsSection from './components/sections/AllProgramsSection';
 import OrganizationSection from './components/sections/OrganizationSection';
 import RecommendSection from './components/sections/RecommendSection';
@@ -82,6 +83,11 @@ function App() {
   const [tagSearch, setTagSearch] = useState('');
 
   const [user, setUser] = useState(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [orgEditingId, setOrgEditingId] = useState(null);
   const [tagEditingId, setTagEditingId] = useState(null);
@@ -570,25 +576,45 @@ const allPrograms = useMemo(() => {
     setManualSelectedTags([]);
   };
 
-  const handleLogin = async () => {
-    const email = prompt('이메일 입력');
-    const password = prompt('비밀번호 입력');
+  const resetLoginModal = useCallback(() => {
+    setLoginEmail('');
+    setLoginPassword('');
+    setLoginError('');
+    setIsLoginSubmitting(false);
+  }, []);
 
-    if (!email || !password) return;
+  const closeLoginModal = useCallback(() => {
+    setIsLoginModalOpen(false);
+    resetLoginModal();
+  }, [resetLoginModal]);
 
+  const handleLogin = async (event) => {
+    event?.preventDefault();
+
+    const email = loginEmail.trim();
+    const password = loginPassword;
+
+    if (!email || !password) {
+      setLoginError('이메일과 비밀번호를 입력하세요.');
+      return;
+    }
+
+    setLoginError('');
+    setIsLoginSubmitting(true);
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      alert(error.message);
+      setLoginError(error.message);
+      setIsLoginSubmitting(false);
       return;
     }
 
     const { data } = await supabase.auth.getUser();
     setUser(data.user);
-    alert('로그인 성공');
+    closeLoginModal();
   };
 
   const handleLogout = async () => {
@@ -1476,7 +1502,10 @@ return;
               로그아웃
             </button>
           ) : (
-            <button className="btn btn-primary full" onClick={handleLogin}>
+            <button
+              className="btn btn-primary full"
+              onClick={() => setIsLoginModalOpen(true)}
+            >
               관리자 로그인
             </button>
           )}
@@ -1635,7 +1664,18 @@ return;
         )}
         <div>© 2026 [금산교육지원청 학생맞춤통합지원센터]. All rights reserved.<br></br><p className="stu" >idea: main:min add: SaRa </p></div> 
       </main>
-      
+
+      <AdminLoginModal
+        isOpen={isLoginModalOpen}
+        email={loginEmail}
+        password={loginPassword}
+        error={loginError}
+        isSubmitting={isLoginSubmitting}
+        onEmailChange={setLoginEmail}
+        onPasswordChange={setLoginPassword}
+        onClose={closeLoginModal}
+        onSubmit={handleLogin}
+      />
     </div>
   );
 }
