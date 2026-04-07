@@ -1,0 +1,15 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "fetch-welfare.js",
+  "scripts": {
+    "start": "node fetch-welfare.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "dotenv": "^16.0.0",
+    "node-fetch": "^3.0.0",
+    "xml2js": "^0.6.0"
+  }
+}
