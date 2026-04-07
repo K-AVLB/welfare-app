@@ -22,6 +22,49 @@ function splitThemes(value) {
     .filter(Boolean);
 }
 
+async function removeOlderDuplicateServices() {
+  const { data, error } = await supabase
+    .from('api_programs_normalized')
+    .select('id, raw_id, service_id, service_name')
+    .order('raw_id', { ascending: false });
+
+  if (error) {
+    console.error('중복 서비스 조회 실패:', error);
+    return;
+  }
+
+  const seen = new Set();
+  const staleIds = [];
+
+  for (const row of data) {
+    const dedupeKey = `${row.service_id ?? ''}::${row.service_name ?? ''}`;
+
+    if (seen.has(dedupeKey)) {
+      staleIds.push(row.id);
+      continue;
+    }
+
+    seen.add(dedupeKey);
+  }
+
+  if (staleIds.length === 0) {
+    console.log('삭제할 중복 서비스가 없습니다.');
+    return;
+  }
+
+  const { error: deleteError } = await supabase
+    .from('api_programs_normalized')
+    .delete()
+    .in('id', staleIds);
+
+  if (deleteError) {
+    console.error('중복 서비스 삭제 실패:', deleteError);
+    return;
+  }
+
+  console.log(`중복 서비스 ${staleIds.length}건 삭제 완료`);
+}
+
 const run = async () => {
   const { data, error } = await supabase
     .from('api_programs_raw')
@@ -82,6 +125,7 @@ const run = async () => {
     }
   }
 
+  await removeOlderDuplicateServices();
   console.log('정규화 완료');
 };
 
