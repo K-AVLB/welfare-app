@@ -1,5 +1,6 @@
 import React from 'react';
 import { CRITICAL_TAGS } from '../constants/appData';
+import { splitProgramDescription } from '../utils/programDetail';
 
 function ProgramCard({
   program,
@@ -17,6 +18,7 @@ function ProgramCard({
 }) {
   const isCritical = program.tags?.some((tag) => CRITICAL_TAGS.includes(tag));
   const isTop = index !== null && index < 3;
+  const { summary, detailLink } = splitProgramDescription(program.description);
 
   return (
     <div
@@ -62,7 +64,7 @@ function ProgramCard({
       </div>
 
       <div className="program-summary">
-        <p>{program.description || '설명 없음'}</p>
+        <p>{summary || '설명 없음'}</p>
 
         {showScore && program.matchedTags && program.matchedTags.length > 0 && (
           <p className="program-match">
@@ -97,8 +99,17 @@ function ProgramCard({
               <p>
                 <strong>설명</strong>
                 <br />
-                {program.description || '설명 없음'}
+                {summary || '설명 없음'}
               </p>
+              {detailLink && (
+                <p>
+                  <strong>상세 안내</strong>
+                  <br />
+                  <a href={detailLink} target="_blank" rel="noreferrer">
+                    {detailLink}
+                  </a>
+                </p>
+              )}
               <p>
                 <strong>대상 연령</strong>
                 <br />
@@ -150,6 +161,11 @@ function ProgramCard({
             {(organization?.phone || program.phone) && (
               <a href={`tel:${organization?.phone || program.phone}`}>
                 <button className="btn btn-primary">전화하기</button>
+              </a>
+            )}
+            {detailLink && (
+              <a href={detailLink} target="_blank" rel="noreferrer">
+                <button className="btn btn-secondary">상세 안내</button>
               </a>
             )}
 

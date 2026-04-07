@@ -1,5 +1,6 @@
 import React from 'react';
 import { HIGH_RISK_TAGS, MEDIUM_RISK_TAGS } from '../../constants/appData';
+import { splitProgramDescription } from '../../utils/programDetail';
 
 function RecommendSection({
   resultRef,
@@ -224,7 +225,12 @@ function RecommendSection({
                         </h4>
 
                         <div className="program-list">
-                          {programs.map((program) => (
+                          {programs.map((program) => {
+                            const { summary, detailLink } = splitProgramDescription(
+                              program.description
+                            );
+
+                            return (
                             <div key={program.id} className="program-simple">
                               <div
                                 style={{
@@ -263,7 +269,7 @@ function RecommendSection({
 
                               {openProgramId === program.id && (
                                 <div className="program-detail-box">
-                                  <h3>{program.description || '설명 없음'}</h3>
+                                  <h3>{summary || '설명 없음'}</h3>
 
                                   <p>✔ 일치 태그: {program.matchedTags.join(', ')}</p>
                                   <p>💡 추천 사유: {program.reasons.join(', ')}</p>
@@ -281,6 +287,19 @@ function RecommendSection({
                                       '연락처 없음'
                                     )}
                                   </p>
+                                  {detailLink && (
+                                    <p>
+                                      <strong>상세 안내:</strong>{' '}
+                                      <a
+                                        href={detailLink}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ color: '#2563eb', fontWeight: 600 }}
+                                      >
+                                        바로가기
+                                      </a>
+                                    </p>
+                                  )}
                                   <p>
                                     <strong>지원연령:</strong> {program.min_age ?? '무관'} ~{' '}
                                     {program.max_age ?? '무관'}세
@@ -295,7 +314,8 @@ function RecommendSection({
                                 </div>
                               )}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
