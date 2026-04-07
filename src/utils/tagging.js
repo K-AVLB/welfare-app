@@ -1,5 +1,16 @@
 import { TAG_KEYWORD_MAP, TAG_PATTERN_MAP } from '../constants/appData';
 
+const SUPPORT_TAG_KEYWORD_MAP = {
+  법률: ['법률', '법률상담', '법률지원', '무료법률', '법률구조', '변호사', '소송', '가정폭력', '성폭력피해', '피해자지원'],
+  주거: ['주거', '월세', '전세', '임대주택', '주거불안', '주택', '거처', '집이없', '살곳', '보증금'],
+  일자리: ['일자리', '취업', '구직', '진로', '직업', '근로', '현장실습', '자립', '장려금'],
+  생활지원: ['생활지원', '생계', '생활비', '긴급복지', '급여', '수당', '보험료', '의료비', '양육비', '복지지원'],
+  서민금융: ['서민금융', '금융지원', '대출', '채무', '햇살론', '통장', '자산형성'],
+  보호·돌봄: ['보호', '돌봄', '양육', '보육', '아이돌봄', '방임', '입양', '위탁', '급식'],
+  안전·위기: ['안전', '위기', '폭력', '학대', '자해', '자살', '성폭력', '가정폭력', '학교폭력', '긴급'],
+  정신건강: ['정신건강', '상담', '심리', '정서', '우울', '불안', '스트레스', '중독', '회복'],
+};
+
 export const normalizeCaseText = (text) =>
   String(text || '')
     .toLowerCase()
@@ -32,6 +43,16 @@ export const createTagExtractor = (validTagNames) => (text) => {
 
     const matched = patterns.some((pattern) =>
       normalized.includes(normalizeCaseText(pattern))
+    );
+
+    if (matched) addTag(tag);
+  });
+
+  Object.entries(SUPPORT_TAG_KEYWORD_MAP).forEach(([tag, keywords]) => {
+    if (!validTagNames.has(tag)) return;
+
+    const matched = keywords.some((keyword) =>
+      normalized.includes(normalizeCaseText(keyword))
     );
 
     if (matched) addTag(tag);
@@ -92,6 +113,14 @@ export const createTagExtractor = (validTagNames) => (text) => {
     (normalized.includes('싸우') || normalized.includes('갈등'))
   ) {
     addTag('가정급변');
+  }
+
+  if (
+    normalized.includes('가정폭력') ||
+    (normalized.includes('폭력') && normalized.includes('집'))
+  ) {
+    addTag('법률');
+    addTag('안전·위기');
   }
 
   if (

@@ -24,6 +24,7 @@ import AllProgramsSection from './components/sections/AllProgramsSection';
 import OrganizationSection from './components/sections/OrganizationSection';
 import RecommendSection from './components/sections/RecommendSection';
 import { createTagExtractor } from './utils/tagging';
+import { extractSearchTerms, getProgramTextMatch } from './utils/recommendation';
 import './App1.css';
 
 function App() {
@@ -324,17 +325,28 @@ function App() {
     );
     const coreMatchRatio =
       selectedCore.length > 0 ? matchedCore.length / selectedCore.length : 0;
+    const organizationName = getOrganizationName(
+      program.organization_id,
+      program.organization
+    );
+    const searchTerms = extractSearchTerms(searchText);
+    const textMatch = getProgramTextMatch(program, searchTerms, organizationName);
+    score += textMatch.score;
 
     return {
       ...program,
       matchedTags,
+      matchedTerms: textMatch.matchedTerms,
       score,
       matchCount,
       hasCriticalMatch,
       coreMatchRatio,
-      reasons: matchedTags.map((tag) => `${tag} 관련 지원`),
+      reasons: [
+        ...matchedTags.map((tag) => `${tag} 관련 지원`),
+        ...textMatch.matchedTerms.map((term) => `"${term}" 관련 지원`),
+      ],
     };
-  }, [selectedTags]);
+  }, [getOrganizationName, searchText, selectedTags]);
 
   const recommendedPrograms = useMemo(() => {
     return programs
@@ -343,7 +355,7 @@ function App() {
       .filter((program) => {
         if (program.hasCriticalMatch) return true;
         if (selectedTags.length === 0) return false;
-        return program.matchCount >= 1;
+        return program.matchCount >= 1 || (program.matchedTerms || []).length >= 1;
       })
       .sort((a, b) => {
         if (b.coreMatchRatio !== a.coreMatchRatio) {
