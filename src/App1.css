@@ -1000,16 +1000,12 @@ a {
 /* ===== 태그 헤더 ===== */
 .tag-header {
   width: 100%;
-  border: none;
   border-radius: 16px;
   padding: 18px 22px;
-  font-size: 22px;
-  font-weight: 800;
-  text-align: left;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  cursor: pointer;
+  gap: 16px;
 
   background: #dbeafe;
   color: #1e3a8a;
@@ -1018,6 +1014,21 @@ a {
 
 .tag-header:hover {
   transform: translateY(-1px);
+}
+
+.tag-header-toggle {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 22px;
+  font-weight: 800;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 0;
 }
 
 /* 위험 태그 */

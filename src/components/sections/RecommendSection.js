@@ -155,21 +155,65 @@ function RecommendSection({
             const isOpen = openTag === tag;
             const isHighRisk = HIGH_RISK_TAGS.includes(tag);
             const isMediumRisk = MEDIUM_RISK_TAGS.includes(tag);
+            const tagProgramIds = [
+              ...new Set(
+                Object.values(organizations)
+                  .flat()
+                  .map((program) => program.id)
+              ),
+            ];
+            const isTagSelected =
+              tagProgramIds.length > 0 &&
+              tagProgramIds.every((id) => selectedProgramIds.includes(id));
+            const selectedTagCount = tagProgramIds.filter((id) =>
+              selectedProgramIds.includes(id)
+            ).length;
 
             return (
               <div key={tag} className="tag-section">
-                <button
-                  type="button"
+                <div
                   className={`tag-header ${isHighRisk ? 'high-risk' : ''} ${isMediumRisk ? 'medium-risk' : ''}`}
-                  onClick={() => setOpenTag((prev) => (prev === tag ? null : tag))}
                 >
-                  <span className="tag-title">
-                    {isHighRisk && '🚨 '}
-                    {isMediumRisk && '⚠️ '}#{tag} 관련 지원 ({totalCount})
-                  </span>
+                  <label
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontWeight: 700,
+                    }}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isTagSelected}
+                      onChange={() => {
+                        setSelectedProgramIds((prev) => {
+                          if (isTagSelected) {
+                            return prev.filter((id) => !tagProgramIds.includes(id));
+                          }
 
-                  <span className="tag-toggle">{isOpen ? '▲' : '▼'}</span>
-                </button>
+                          return [...new Set([...prev, ...tagProgramIds])];
+                        });
+                      }}
+                    />
+                    <span>
+                      선택 ({selectedTagCount}/{tagProgramIds.length})
+                    </span>
+                  </label>
+
+                  <button
+                    type="button"
+                    className="tag-header-toggle"
+                    onClick={() => setOpenTag((prev) => (prev === tag ? null : tag))}
+                  >
+                    <span className="tag-title">
+                      {isHighRisk && '🚨 '}
+                      {isMediumRisk && '⚠️ '}#{tag} 관련 지원 ({totalCount})
+                    </span>
+
+                    <span className="tag-toggle">{isOpen ? '▲' : '▼'}</span>
+                  </button>
+                </div>
 
                 {isOpen && (
                   <div className="tag-section-scroll">
