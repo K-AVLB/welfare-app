@@ -31,43 +31,7 @@ function App() {
   const [programs, setPrograms] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [tags, setTags] = useState([]);
-  const [hasSavedCaseLog, setHasSavedCaseLog] = useState(false);
-
-  const saveCaseLog = async ({
-    searchText: caseText,
-    autoTags,
-    finalTags,
-    age: caseAge,
-    gender: caseGender,
-    schoolLevel: caseSchoolLevel,
-  }) => {
-    try {
-      const normalizedAge =
-        caseAge === '' || caseAge === null || caseAge === undefined
-          ? null
-          : Number(caseAge);
-
-      const { error } = await supabase.from('case_logs').insert([
-        {
-          input_text: caseText,
-          auto_tags: autoTags,
-          final_tags: finalTags,
-          min_age: normalizedAge,
-          max_age: normalizedAge,
-          gender: caseGender,
-          school_level: caseSchoolLevel,
-        },
-      ]);
-
-      if (error) {
-        console.error('❌ 사례 저장 실패:', error);
-      } else {
-        console.log('✅ 사례 저장 완료');
-      }
-    } catch (err) {
-      console.error('❌ 저장 중 오류:', err);
-    }
-  };
+  const BRAND_NAME = '금산학생복지이음센터';
 
   const [autoSelectedTags, setAutoSelectedTags] = useState([]);
   const [manualSelectedTags, setManualSelectedTags] = useState([]);
@@ -128,32 +92,6 @@ function App() {
     return [...new Set([...autoSelectedTags, ...manualSelectedTags])];
   }, [autoSelectedTags, manualSelectedTags]);
 
-
-  useEffect(() => {
-    if (!searchText.trim()) return;
-    if (selectedTags.length === 0) return;
-    if (hasSavedCaseLog) return;
-
-    saveCaseLog({
-      searchText,
-      autoTags: extractTagsFromText(searchText),
-      finalTags: selectedTags,
-      age,
-      gender,
-      schoolLevel,
-    });
-
-    setHasSavedCaseLog(true);
-  }, [
-    age,
-    extractTagsFromText,
-    gender,
-    hasSavedCaseLog,
-    schoolLevel,
-    searchText,
-    selectedTags,
-  ]);
-
   useEffect(() => {
     fetchPrograms();
     fetchOrganizations();
@@ -163,12 +101,6 @@ function App() {
       setUser(data.user);
     });
   }, []);
-
-  // 👉 입력 바뀌면 저장 초기화
-  useEffect(() => {
-    setHasSavedCaseLog(false);
-  }, [searchText, age, gender, schoolLevel]);
-
   useEffect(() => {
     setSelectedOrganizationId('');
   }, [orgSearch]);
@@ -648,7 +580,6 @@ const allPrograms = useMemo(() => {
     setAdminOrgSearch('');
     setAdminTagSearch('');
     setAllProgramSearch('');
-    setHasSavedCaseLog(false);
     setForm(createProgramForm());
     setOrgForm(createOrganizationForm());
     setTagForm(createTagForm());
@@ -1468,8 +1399,8 @@ return;
             <img src="/logo.png" alt="logo" />
           </div>
           <div>
-            <div className="brand-title">금산교육지원청</div>
-            <div className="brand-sub">학생맞춤통합지원</div>
+            <div className="brand-title">{BRAND_NAME}</div>
+            <div className="brand-sub">학생복지이음 서비스</div>
           </div>
         </div>
 
@@ -1662,7 +1593,9 @@ return;
             handleExportPrograms={handleExportPrograms}
           />
         )}
-        <div>© 2026 [금산교육지원청 학생맞춤통합지원센터]. All rights reserved.<br></br><p className="stu" >idea: main:min add: SaRa </p></div> 
+        <div>
+          © 2026 [{BRAND_NAME}]. All rights reserved.
+        </div>
       </main>
 
       <AdminLoginModal
