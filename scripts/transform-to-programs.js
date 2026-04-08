@@ -10,6 +10,8 @@ const TAG_CATEGORY = '복지로 분류';
 const SUPPORT_TAG_CATEGORY = '지원영역';
 const MAX_RETRIES = Number(process.env.SUPABASE_MAX_RETRIES || 3);
 const RETRY_DELAY_MS = Number(process.env.SUPABASE_RETRY_DELAY_MS || 1200);
+const DETAIL_FETCH_DELAY_MS = Number(process.env.BOKJIRO_DETAIL_FETCH_DELAY_MS || 120);
+const DETAIL_FETCH_TIMEOUT_MS = Number(process.env.BOKJIRO_DETAIL_FETCH_TIMEOUT_MS || 12000);
 const SUPPORT_TAGS = [
   '학습지원',
   '진로지원',
@@ -17,6 +19,34 @@ const SUPPORT_TAGS = [
   '심리·정서지원',
   '복지지원',
 ];
+const ALWAYS_ALLOWED_MINISTRIES = new Set([
+  '교육부',
+  '보건복지부',
+  '성평등가족부',
+  '통일부',
+]);
+const CONDITIONALLY_ALLOWED_MINISTRIES = new Set([
+  '고용노동부',
+  '과학기술정보통신부',
+  '문화체육관광부',
+  '질병관리청',
+  '행정안전부',
+]);
+const ALWAYS_EXCLUDED_MINISTRIES = new Set([
+  '해양수산부',
+  '농림축산식품부',
+  '산림청',
+  '금융위원회',
+  '중소벤처기업부',
+  '국가보훈부',
+  '국토교통부',
+  '환경부',
+  '기획재정부',
+  '대검찰청',
+  '산업통상부',
+  '기후에너지환경부',
+  '방송통신위원회',
+]);
 const DETAILED_TAG_RULES = {
   북한이탈주민: ['통일부', '탈북', '북한이탈', '정착지원'],
   학교밖청소년: ['학교밖', '검정고시', '꿈드림'],
@@ -105,6 +135,22 @@ const EXCLUDED_KEYWORDS = [
   '노후',
   '연금',
 ];
+const CHILD_CONTEXT_KEYWORDS = [
+  '아동',
+  '자녀',
+  '청소년',
+  '학생',
+  '영유아',
+  '유아',
+  '초등학생',
+  '중학생',
+  '고등학생',
+  '학교밖',
+  '학교 밖',
+];
+const FEMALE_GENDER_KEYWORDS = ['여성', '여학생', '여아'];
+const MALE_GENDER_KEYWORDS = ['남성', '남학생', '남아'];
+const detailMetadataCache = new Map();
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -154,6 +200,248 @@ function getOrganizationName(row) {
 
 function normalizeText(value) {
   return (value || '').trim();
+}
+
+function decodeHtmlEntities(value) {
+  return String(value || '')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&gt;/gi, '>')
+    .replace(/&lt;/gi, '<')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+}
+
+function stripHtml(value) {
+  return decodeHtmlEntities(String(value || ''))
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractDetailPayloadFromHtml(html) {
+  const match = html.match(/"dmWlfareInfo":"((?:\\.|[^"])*)"/);
+  if (!match) return null;
+
+  try {
+    const decodedJson = JSON.parse(`"${match[1]}"`);
+    return JSON.parse(decodedJson);
+  } catch (error) {
+    console.warn('복지로 상세 JSON 파싱 실패:', error.message);
+    return null;
+  }
+}
+
+function toAgeRange(minAge, maxAge) {
+  return {
+    min_age: Number.isFinite(minAge) ? minAge : null,
+    max_age: Number.isFinite(maxAge) ? maxAge : null,
+  };
+}
+
+function parseAgeRangeFromText(text) {
+  const normalized = normalizeText(text);
+  if (!normalized) {
+    return toAgeRange(null, null);
+  }
+
+  let match = normalized.match(/만?\s*(\d{1,2})\s*[~\-]\s*(\d{1,2})\s*세/);
+  if (match) {
+    return toAgeRange(Number(match[1]), Number(match[2]));
+  }
+
+  match = normalized.match(/만?\s*(\d{1,2})\s*세\s*이상\s*(\d{1,2})\s*세\s*(?:이하|미만)/);
+  if (match) {
+    return toAgeRange(Number(match[1]), Number(match[2]));
+  }
+
+  match = normalized.match(/만?\s*(\d{1,2})\s*세\s*(?:이하|미만)/);
+  if (match) {
+    const maxAge = Number(match[1]);
+    return toAgeRange(0, normalized.includes('미만') ? maxAge - 1 : maxAge);
+  }
+
+  match = normalized.match(/만?\s*(\d{1,2})\s*세\s*이상/);
+  if (match) {
+    return toAgeRange(Number(match[1]), null);
+  }
+
+  return toAgeRange(null, null);
+}
+
+function getChildContextSegments(text) {
+  return String(text || '')
+    .split(/[\n.;]/)
+    .map((segment) => segment.trim())
+    .filter(
+      (segment) =>
+        segment &&
+        CHILD_CONTEXT_KEYWORDS.some((keyword) => segment.includes(keyword))
+    );
+}
+
+function extractChildAgeRangesFromSegment(segment) {
+  const ranges = [];
+  const childPattern = '(?:자녀|아동|청소년|학생|영유아|유아|학교밖|학교 밖)';
+  const patterns = [
+    new RegExp(`(\\d{1,2})\\s*세\\s*이상\\s*(\\d{1,2})\\s*세\\s*(?:이하|미만)\\s*(?:의\\s*)?${childPattern}`, 'g'),
+    new RegExp(`(\\d{1,2})\\s*[~\\-]\\s*(\\d{1,2})\\s*세(?:\\s*의)?\\s*${childPattern}`, 'g'),
+    new RegExp(`(\\d{1,2})\\s*세\\s*(?:이하|미만)\\s*(?:의\\s*)?${childPattern}`, 'g'),
+  ];
+
+  patterns.forEach((pattern, index) => {
+    let match;
+    while ((match = pattern.exec(segment)) !== null) {
+      if (index === 0 || index === 1) {
+        ranges.push(toAgeRange(Number(match[1]), Number(match[2])));
+      } else {
+        const maxAge = Number(match[1]);
+        ranges.push(
+          toAgeRange(0, segment.slice(match.index, pattern.lastIndex).includes('미만') ? maxAge - 1 : maxAge)
+        );
+      }
+    }
+  });
+
+  return ranges;
+}
+
+function mergeAgeRanges(ranges) {
+  const minValues = ranges
+    .map((range) => range.min_age)
+    .filter((value) => Number.isFinite(value));
+  const maxValues = ranges
+    .map((range) => range.max_age)
+    .filter((value) => Number.isFinite(value));
+
+  return {
+    min_age: minValues.length > 0 ? Math.min(...minValues) : null,
+    max_age: maxValues.length > 0 ? Math.max(...maxValues) : null,
+  };
+}
+
+function extractAgeRange(detail) {
+  const targetSegments = getChildContextSegments(detail.targetText);
+  const segmentRanges = targetSegments
+    .flatMap((segment) => extractChildAgeRangesFromSegment(segment))
+    .filter(
+      (range) =>
+        Number.isFinite(range.min_age) || Number.isFinite(range.max_age)
+    );
+
+  if (segmentRanges.length > 0) {
+    return mergeAgeRanges(segmentRanges);
+  }
+
+  const ageGroupRange = parseAgeRangeFromText(detail.ageGroup);
+  if (
+    Number.isFinite(ageGroupRange.min_age) ||
+    Number.isFinite(ageGroupRange.max_age)
+  ) {
+    return ageGroupRange;
+  }
+
+  return toAgeRange(null, null);
+}
+
+function extractGender(detail) {
+  const text = [detail.ageGroup, detail.targetText, detail.selectionText]
+    .map(normalizeText)
+    .join(' ');
+
+  const hasFemale = FEMALE_GENDER_KEYWORDS.some((keyword) => text.includes(keyword));
+  const hasMale = MALE_GENDER_KEYWORDS.some((keyword) => text.includes(keyword));
+
+  if (hasFemale && !hasMale) return '여';
+  if (hasMale && !hasFemale) return '남';
+  return '무관';
+}
+
+function extractSchoolLevel(detail) {
+  const text = [detail.ageGroup, detail.targetText, detail.selectionText]
+    .map(normalizeText)
+    .join(' ');
+  const schoolLevels = new Set();
+
+  if (/초등학생|초등학교/.test(text)) schoolLevels.add('초등');
+  if (/중학생|중학교/.test(text)) schoolLevels.add('중등');
+  if (/고등학생|고등학교/.test(text)) schoolLevels.add('고등');
+  if (/학교밖|학교 밖|검정고시/.test(text)) schoolLevels.add('학교밖');
+
+  return schoolLevels.size === 1 ? [...schoolLevels][0] : '무관';
+}
+
+async function fetchProgramEligibilityMetadata(row) {
+  const detailLink = normalizeText(row.detail_link);
+  if (!detailLink) {
+    return {
+      min_age: null,
+      max_age: null,
+      gender: '무관',
+      school_level: '무관',
+    };
+  }
+
+  if (detailMetadataCache.has(detailLink)) {
+    return detailMetadataCache.get(detailLink);
+  }
+
+  const metadata = await withRetry(`복지로 상세 조회:${row.service_name}`, async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), DETAIL_FETCH_TIMEOUT_MS);
+    let response;
+
+    try {
+      response = await fetch(detailLink, {
+        headers: {
+          'user-agent': 'Mozilla/5.0',
+          'accept-language': 'ko-KR,ko;q=0.9',
+        },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!response.ok) {
+      throw new Error(`상세 페이지 조회 실패(${response.status})`);
+    }
+
+    const html = await response.text();
+    const payload = extractDetailPayloadFromHtml(html);
+
+    if (!payload) {
+      return {
+        min_age: null,
+        max_age: null,
+        gender: '무관',
+        school_level: '무관',
+      };
+    }
+
+    const detail = {
+      ageGroup: stripHtml(payload.wlfareInfoAggrpCdnm),
+      targetText: stripHtml(payload.wlfareSprtTrgtCn),
+      selectionText: stripHtml(payload.wlfareSprtTrgtSlcrCn),
+    };
+    const ageRange = extractAgeRange(detail);
+
+    return {
+      min_age: ageRange.min_age,
+      max_age: ageRange.max_age,
+      gender: extractGender(detail),
+      school_level: extractSchoolLevel(detail),
+    };
+  });
+
+  detailMetadataCache.set(detailLink, metadata);
+  await sleep(DETAIL_FETCH_DELAY_MS);
+  return metadata;
 }
 
 function buildDescription(row) {
@@ -322,14 +610,32 @@ function isStudentWelfareProgram(row) {
     return false;
   }
 
+  const ministryName = normalizeText(row.ministry_name);
+  if (ALWAYS_EXCLUDED_MINISTRIES.has(ministryName)) {
+    return false;
+  }
+
   const hasStudentKeyword = STUDENT_FOCUS_KEYWORDS.some((keyword) =>
     text.includes(keyword.toLowerCase())
   );
   const hasAllowedTheme = (row.themes || []).some((theme) =>
     ALLOWED_THEMES.has(normalizeText(theme))
   );
+  const hasStrongStudentEvidence =
+    hasStudentKeyword ||
+    ['청소년', '아동', '영유아', '유아', '학교밖', '특수교육', '검정고시', '드림스타트'].some(
+      (keyword) => text.includes(keyword.toLowerCase())
+    );
 
-  return hasStudentKeyword || hasAllowedTheme;
+  if (ALWAYS_ALLOWED_MINISTRIES.has(ministryName)) {
+    return hasStudentKeyword || hasAllowedTheme;
+  }
+
+  if (CONDITIONALLY_ALLOWED_MINISTRIES.has(ministryName)) {
+    return hasStrongStudentEvidence;
+  }
+
+  return false;
 }
 
 function dedupeRowsByProgramKey(rows) {
@@ -507,6 +813,7 @@ async function syncPrograms(rows, organizationMap) {
     const organizationName = getOrganizationName(row);
     const organization = organizationMap.get(organizationName);
     const key = getProgramKey(row.service_name, organizationName);
+    const eligibilityMetadata = await fetchProgramEligibilityMetadata(row);
     const payload = {
       name: normalizeText(row.service_name),
       organization: organizationName,
@@ -519,10 +826,10 @@ async function syncPrograms(rows, organizationMap) {
         ...(row.themes || []).map(normalizeText).filter(Boolean),
       ].filter(Boolean),
       priority: null,
-      min_age: null,
-      max_age: null,
-      gender: '무관',
-      school_level: '무관',
+      min_age: eligibilityMetadata.min_age,
+      max_age: eligibilityMetadata.max_age,
+      gender: eligibilityMetadata.gender,
+      school_level: eligibilityMetadata.school_level,
     };
 
     if (programMap.has(key)) {

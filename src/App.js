@@ -348,7 +348,19 @@ function App() {
     };
   }, [getOrganizationName, searchText, selectedTags]);
 
-  const recommendedPrograms = useMemo(() => {
+  const sortRecommendedPrograms = useCallback((a, b) => {
+    if (b.coreMatchRatio !== a.coreMatchRatio) {
+      return b.coreMatchRatio - a.coreMatchRatio;
+    }
+
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+
+    return a.name.localeCompare(b.name);
+  }, []);
+
+  const candidateRecommendedPrograms = useMemo(() => {
     return programs
       .filter((program) => passesRequiredFilters(program))
       .map((program) => calculateRecommendationScore(program))
@@ -357,19 +369,33 @@ function App() {
         if (selectedTags.length === 0) return false;
         return program.matchCount >= 1 || (program.matchedTerms || []).length >= 1;
       })
-      .sort((a, b) => {
-        if (b.coreMatchRatio !== a.coreMatchRatio) {
-          return b.coreMatchRatio - a.coreMatchRatio;
-        }
+      .sort(sortRecommendedPrograms);
+  }, [
+    calculateRecommendationScore,
+    passesRequiredFilters,
+    programs,
+    selectedTags,
+    sortRecommendedPrograms,
+  ]);
 
-        if (b.score !== a.score) {
-          return b.score - a.score;
-        }
+  const recommendedPrograms = useMemo(() => {
+    const guaranteedPrograms = new Map(
+      candidateRecommendedPrograms
+        .slice(0, 20)
+        .map((program) => [program.id, program])
+    );
 
-        return a.name.localeCompare(b.name);
-      })
-      .slice(0, 20);
-  }, [calculateRecommendationScore, passesRequiredFilters, programs, selectedTags]);
+    selectedTags.forEach((tag) => {
+      candidateRecommendedPrograms
+        .filter((program) => (program.matchedTags || []).includes(tag))
+        .slice(0, 3)
+        .forEach((program) => {
+          guaranteedPrograms.set(program.id, program);
+        });
+    });
+
+    return Array.from(guaranteedPrograms.values()).sort(sortRecommendedPrograms);
+  }, [candidateRecommendedPrograms, selectedTags, sortRecommendedPrograms]);
  
 
 const groupedPrograms = useMemo(() => {
