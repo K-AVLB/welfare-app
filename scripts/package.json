@@ -7,6 +7,8 @@
     "fetch": "node fetch-welfare.js",
     "normalize": "node normalize-api.js",
     "sync-programs": "node transform-to-programs.js",
+    "excel-tool": "node generate-excel-tool.js",
+    "local-app-data": "node export-local-app-data.js",
     "import-all": "node fetch-welfare.js && node normalize-api.js && node transform-to-programs.js",
     "start": "node fetch-welfare.js"
   },
