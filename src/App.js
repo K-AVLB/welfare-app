@@ -32,7 +32,7 @@ function App() {
   const [programs, setPrograms] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [tags, setTags] = useState([]);
-  const BRAND_NAME = '금산학생복지이음센터';
+  const BRAND_NAME = '학생복지이음 서비스';
 
   const [autoSelectedTags, setAutoSelectedTags] = useState([]);
   const [manualSelectedTags, setManualSelectedTags] = useState([]);
@@ -1433,12 +1433,9 @@ return;
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">
-            <img src="/logo.png" alt="logo" />
-          </div>
           <div>
             <div className="brand-title">{BRAND_NAME}</div>
-            <div className="brand-sub">학생복지이음 서비스</div>
+            <div className="brand-sub">학생 상황 기반 복지사업 추천</div>
           </div>
         </div>
 

@@ -429,7 +429,7 @@ function AdminSection({
             <h3>기관 목록</h3>
             <input
               className="field"
-              placeholder="기관명 검색 (예: 금산, 청소년)"
+              placeholder="기관명 검색 (예: 청소년, 상담, 복지)"
               value={adminOrgSearch}
               onChange={(event) => setAdminOrgSearch(event.target.value)}
               style={{ marginBottom: 12 }}
