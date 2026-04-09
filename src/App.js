@@ -1309,7 +1309,7 @@ return;
   );
 
   if (selectedPrograms.length === 0) {
-    alert('선택된 추천 사업 데이터를 찾을 수 없습니다.');
+    alert('선택된 사업 데이터를 찾을 수 없습니다.');
     return;
   }
 
@@ -1322,10 +1322,10 @@ return;
     일치태그: Array.isArray(program.matchedTags)
       ? program.matchedTags.join(', ')
       : '',
-    추천이유: Array.isArray(program.reasons)
+    맞춤이유: Array.isArray(program.reasons)
       ? program.reasons.join(', ')
       : '',
-    추천점수: program.score ?? '',
+    맞춤점수: program.score ?? '',
     전체태그: Array.isArray(program.tags)
       ? program.tags.join(', ')
       : '',
@@ -1343,9 +1343,9 @@ return;
 
   const worksheet = XLSX.utils.json_to_sheet(exportRows);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, '추천사업');
+  XLSX.utils.book_append_sheet(workbook, worksheet, '검색사업');
 
-  XLSX.writeFile(workbook, '추천사업_선택목록.xlsx');
+  XLSX.writeFile(workbook, '검색사업_선택목록.xlsx');
 };
 
   const handleExportOrganizations = () => {

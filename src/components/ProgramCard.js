@@ -47,7 +47,7 @@ function ProgramCard({
             <div className="program-badge critical">🚨 긴급 지원 필요</div>
           )}
           {isTop && (
-            <div className="program-badge top">⭐ 추천 TOP {index + 1}</div>
+            <div className="program-badge top">⭐ 맞춤 TOP {index + 1}</div>
           )}
           <h3 className="program-title">{program.name}</h3>
           <p className="program-sub">
@@ -74,7 +74,7 @@ function ProgramCard({
 
         {showScore && program.reasons && program.reasons.length > 0 && (
           <p className="program-match">
-            추천 이유: {program.reasons.join(', ')}
+            맞춤 이유: {program.reasons.join(', ')}
           </p>
         )}
 

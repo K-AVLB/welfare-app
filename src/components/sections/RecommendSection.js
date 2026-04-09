@@ -39,7 +39,7 @@ function RecommendSection({
     <>
       <section className="result-head" ref={resultRef}>
         <div>
-          <h2>추천 사업</h2>
+          <h2>검색 사업</h2>
 
           <div style={{ marginTop: 10 }}>
             <button
@@ -101,7 +101,7 @@ function RecommendSection({
               ))}
             </div>
           )}
-          <p>선택한 조건과 태그를 기반으로 추천됩니다</p>
+          <p>선택한 조건과 태그를 기반으로 검색됩니다</p>
         </div>
         <div className="result-count">{recommendedPrograms.length}개 결과</div>
       </section>
@@ -115,7 +115,7 @@ function RecommendSection({
                 setSelectedProgramIds(recommendedPrograms.map((program) => program.id))
               }
             >
-              추천 목록 전체 선택
+              검색 목록 전체 선택
             </button>
 
             <button
@@ -146,7 +146,7 @@ function RecommendSection({
 
       {recommendedPrograms.length === 0 ? (
         <div className="empty-state">
-          <h3>아직 추천 결과가 없습니다</h3>
+          <h3>아직 검색 결과가 없습니다</h3>
           <p>아래에서 조건이나 태그를 입력해보세요</p>
         </div>
       ) : (
@@ -272,7 +272,7 @@ function RecommendSection({
                                   <h3>{summary || '설명 없음'}</h3>
 
                                   <p>✔ 일치 태그: {program.matchedTags.join(', ')}</p>
-                                  <p>💡 추천 사유: {program.reasons.join(', ')}</p>
+                                  <p>💡 맞춤 사유: {program.reasons.join(', ')}</p>
 
                                   <p>
                                     📞 전화:{' '}
@@ -330,7 +330,7 @@ function RecommendSection({
       <section className="panel glass">
         <div className="panel-header">
           <h2>조건 설정</h2>
-          <p>학생 정보를 입력하면 추천이 더 정확해집니다</p>
+          <p>관련 조건을 설정하면 검색이 더 정확해집니다</p>
         </div>
 
         <div className="filter-grid">
