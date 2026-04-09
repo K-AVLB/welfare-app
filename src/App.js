@@ -32,7 +32,7 @@ function App() {
   const [programs, setPrograms] = useState([]);
   const [organizations, setOrganizations] = useState([]);
   const [tags, setTags] = useState([]);
-  const BRAND_NAME = '학생복지이음 서비스';
+  const BRAND_NAME = '학생복지 검색';
 
   const [autoSelectedTags, setAutoSelectedTags] = useState([]);
   const [manualSelectedTags, setManualSelectedTags] = useState([]);
@@ -1435,7 +1435,7 @@ return;
         <div className="brand">
           <div>
             <div className="brand-title">{BRAND_NAME}</div>
-            <div className="brand-sub">학생 상황 기반 복지사업 추천</div>
+            <div className="brand-sub">학생 상황 기반 복지사업 검색</div>
           </div>
         </div>
 
@@ -1444,7 +1444,7 @@ return;
             className={`nav-btn ${viewMode === 'recommend' ? 'active' : ''}`}
             onClick={() => setViewMode('recommend')}
           >
-            추천 보기
+            결과 보기
           </button>
 
           <button
@@ -1483,7 +1483,7 @@ return;
           <div>
             <h1>학생 상황에 맞는 복지 사업을 빠르게 찾으세요</h1>
             <p>
-              연령, 성별, 학령, 상황 태그를 바탕으로 관련 사업을 추천하고
+              연령, 성별, 학령, 상황 태그를 바탕으로 관련 사업을 검색하고
               유관기관까지 바로 연결합니다.
             </p>
           </div>
